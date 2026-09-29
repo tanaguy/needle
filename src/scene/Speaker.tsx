@@ -7,14 +7,17 @@ import { P } from '../palette'
 import { flat } from './materials'
 import { woodMaterial } from './wood'
 
-// OJAS-style horn speaker (after Devon Turnbull's hi-fi): butt-joined Baltic birch
-// cabinet with the ply layers left showing, a big woofer on a dark baffle, and a
-// sand-cast aluminium multicell horn sitting on top. Metres; origin = floor, centre.
-const W = 0.46 // cabinet width
-const H = 0.6 // cabinet height
-const D = 0.4 // cabinet depth
-const T = 0.022 // panel thickness
-const STAND = 0.3 // plinth height
+// Klipsch × OJAS kO-R2-style horn speaker, to the published drawing:
+//   cabinet 30.08" tall (0.764 m), ~23" wide; horn 25.38" × 14.48" (0.645 × 0.368 m),
+//   15 cells (5 × 3) like the Altec 1505B it descends from; 15" woofer; slot port.
+// Butt-joined Baltic birch with the ply layers showing, birch front, matte black horn.
+// Metres; origin = floor, centre.
+const IN = 0.0254
+const W = 23 * IN // cabinet width
+const H = 30.08 * IN // cabinet height
+const D = 17 * IN // cabinet depth
+const T = 0.75 * IN // 3/4" birch ply
+const FEET = 0.02
 
 const BIRCH = '#E4CDA6'
 const PLY_DARK = '#C9A877'
@@ -69,13 +72,14 @@ function Panel({ size, position, vertical }: { size: [number, number, number]; p
   )
 }
 
-const R = 0.15 // woofer radius
-const WOOFER_Y = H * 0.42
-const BAFFLE_Z = D / 2 - 0.03 // back face of the recessed baffle
-const BAFFLE_T = 0.012
-const BF = BAFFLE_Z + BAFFLE_T // baffle front face
+const WOOFER_R = 7.5 * IN // 15" driver (frame radius)
+const WOOFER_Y = H * 0.66 // centre height, from the drawing
+const PORT_W = 13 * IN
+const PORT_H = 3.4 * IN
+const PORT_Y = H * 0.18
+const BF = D / 2 // flush birch front
 
-/** Charcoal front baffle with a round cut-out, so the cone sits properly inside it. */
+/** Birch front baffle with cut-outs for the woofer and the slot port. */
 function Baffle() {
   const geom = useMemo(() => {
     const w = W - 2 * T
@@ -87,38 +91,60 @@ function Baffle() {
     shape.lineTo(-w / 2, h / 2)
     shape.lineTo(-w / 2, -h / 2)
     const hole = new THREE.Path()
-    hole.absarc(0, WOOFER_Y - H / 2, R, 0, Math.PI * 2, true)
+    hole.absarc(0, WOOFER_Y - H / 2, WOOFER_R - 0.012, 0, Math.PI * 2, true)
     shape.holes.push(hole)
-    return new THREE.ExtrudeGeometry(shape, { depth: BAFFLE_T, bevelEnabled: false, curveSegments: 40 })
+    const port = new THREE.Path()
+    const py = PORT_Y - H / 2
+    port.moveTo(-PORT_W / 2, py - PORT_H / 2)
+    port.lineTo(-PORT_W / 2, py + PORT_H / 2)
+    port.lineTo(PORT_W / 2, py + PORT_H / 2)
+    port.lineTo(PORT_W / 2, py - PORT_H / 2)
+    port.lineTo(-PORT_W / 2, py - PORT_H / 2)
+    shape.holes.push(port)
+    // extrude UVs are in metres on the face, so the grain tiles at real scale
+    return new THREE.ExtrudeGeometry(shape, { depth: T, bevelEnabled: false, curveSegments: 48 })
   }, [])
-  return <mesh geometry={geom} position={[0, STAND + H / 2, BAFFLE_Z]} material={flat(P.charcoalHi, { rough: 0.8 })} receiveShadow />
+  return (
+    <mesh geometry={geom} position={[0, FEET + H / 2, BF - T]} material={woodMaterial(BIRCH, 1, 1, true)} castShadow receiveShadow />
+  )
 }
 
-function Woofer({ cone }: { cone: React.RefObject<THREE.Group | null> }) {
+function Woofer() {
+  const R = WOOFER_R
+  const cone = useMemo(() => new THREE.MeshStandardMaterial({ color: '#34312d', roughness: 0.95, side: THREE.DoubleSide, flatShading: true }), [])
   return (
-    <group position={[0, STAND + WOOFER_Y, 0]}>
+    <group position={[0, FEET + WOOFER_Y, 0]}>
       {/* basket behind the cut-out */}
-      <mesh position-z={BF - 0.07} rotation-x={Math.PI / 2} material={flat('#1a1918')}>
-        <cylinderGeometry args={[R, R, 0.01, 40]} />
+      <mesh position-z={BF - 0.1} rotation-x={Math.PI / 2} material={flat('#141312')}>
+        <cylinderGeometry args={[R, R, 0.01, 48]} />
       </mesh>
-      {/* frame ring on the baffle */}
-      <mesh position-z={BF + 0.002} material={flat(P.charcoal, { rough: 0.5 })}>
-        <ringGeometry args={[R - 0.004, R + 0.016, 40]} />
+      {/* cast frame ring on the baffle */}
+      <mesh position-z={BF + 0.003} material={flat(P.charcoal, { rough: 0.5, metal: 0.2 })}>
+        <ringGeometry args={[R - 0.016, R, 48]} />
       </mesh>
       {/* rubber surround */}
-      <mesh position-z={BF - 0.002} material={flat('#242321', { rough: 0.9 })}>
-        <torusGeometry args={[R - 0.014, 0.011, 8, 40]} />
+      <mesh position-z={BF - 0.004} material={flat('#242321', { rough: 0.9 })}>
+        <torusGeometry args={[R - 0.03, 0.014, 8, 48]} />
       </mesh>
-      <group ref={cone}>
-        {/* paper cone: wide at the front, narrowing back into the box */}
-        <mesh position-z={BF - 0.03} rotation-x={Math.PI / 2} material={new THREE.MeshStandardMaterial({ color: '#34312d', roughness: 0.95, side: THREE.DoubleSide, flatShading: true })}>
-          <cylinderGeometry args={[R - 0.022, 0.04, 0.05, 40, 1, true]} />
+      {/* paper cone, wide at the front, narrowing back into the box */}
+      <mesh position-z={BF - 0.045} rotation-x={Math.PI / 2} material={cone}>
+        <cylinderGeometry args={[R - 0.042, 0.05, 0.075, 48, 1, true]} />
+      </mesh>
+      {/* dust cap */}
+      <mesh position-z={BF - 0.084} rotation-x={Math.PI / 2} material={flat(P.charcoal, { rough: 0.45 })}>
+        <sphereGeometry args={[0.06, 24, 10, 0, Math.PI * 2, 0, Math.PI / 2]} />
+      </mesh>
+      {/* four mounting screws, as on the drawing */}
+      {[
+        [-1, -1],
+        [1, -1],
+        [-1, 1],
+        [1, 1],
+      ].map(([sx, sy], i) => (
+        <mesh key={i} position={[sx * (R + 0.022), sy * (R + 0.022), BF + 0.002]} rotation-x={Math.PI / 2} material={flat('#3a3936', { rough: 0.4, metal: 0.5 })}>
+          <cylinderGeometry args={[0.006, 0.006, 0.004, 10]} />
         </mesh>
-        {/* dust cap */}
-        <mesh position-z={BF - 0.056} rotation-x={Math.PI / 2} material={flat(P.charcoal, { rough: 0.45 })}>
-          <sphereGeometry args={[0.042, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2]} />
-        </mesh>
-      </group>
+      ))}
     </group>
   )
 }
@@ -152,58 +178,59 @@ function flareGeometry(throatW: number, throatH: number, mouthW: number, mouthH:
 
 /** Multicell horn: a flared aluminium mouth split into a 3 × 2 grid of cells. */
 /**
- * Multicellular horn, cinema-style: a 3 × 2 bank of rectangular cells that all start at
- * one throat and fan out, so the mouth forms a curved arc. Matte black.
+ * 15-cell multicellular horn (5 wide × 3 high), matte black. Every cell starts at one
+ * throat and fans out; cell mouths meet edge-to-edge, forming the curved front.
  */
 function Horn() {
-  // two blacks: a satin outer shell and a near-black interior, so each cell reads as a tube
   const shell = useMemo(() => new THREE.MeshStandardMaterial({ color: '#2c2b29', roughness: 0.5, metalness: 0.2, side: THREE.FrontSide, flatShading: true }), [])
   const inner = useMemo(() => new THREE.MeshStandardMaterial({ color: '#0c0b0a', roughness: 0.95, side: THREE.BackSide }), [])
   const rim = flat('#4a4845', { rough: 0.5, metal: 0.2 })
-  const LEN = 0.19 // cell length, throat → mouth
-  const MW = 0.063 // mouth width: neighbours meet edge-to-edge at the mouth
-  const MH = 0.068
-  const cell = useMemo(() => flareGeometry(0.018, 0.03, MW, MH, LEN), [])
-  const COLS = [-1, 0, 1]
-  const ROWS = [-1, 1]
-  const FAN_H = 0.33 // radians between columns
-  const FAN_V = 0.19 // radians between rows
+  const MOUTH_W = 25.38 * IN
+  const MOUTH_H = 14.48 * IN
+  const LEN = 0.36 // throat → mouth
+  const COLS = [-2, -1, 0, 1, 2]
+  const ROWS = [-1, 0, 1]
+  const CW = MOUTH_W / 5 // cell mouth width
+  const CH = MOUTH_H / 3
+  const FAN_H = CW / LEN // radians between columns → mouths meet edge to edge
+  const ROW_OFF = 0.022 // row spacing at the throat
+  const FAN_V = (CH - ROW_OFF) / LEN
+  const cell = useMemo(() => flareGeometry(0.03, ROW_OFF, CW, CH, LEN), [CW, CH])
+  const THROAT_Y = MOUTH_H / 2 + 0.02 // lowest cells clear the cabinet top
   return (
-    <group position={[0, H + STAND, 0.02]}>
-      {/* base plate the horn rests on */}
-      <mesh position={[0, 0.006, -0.02]} material={shell} castShadow receiveShadow>
-        <boxGeometry args={[0.2, 0.012, 0.2]} />
+    <group position={[0, FEET + H, 0]}>
+      {/* cradle the horn rests on */}
+      <mesh position={[0, 0.012, -0.08]} material={shell} castShadow receiveShadow>
+        <boxGeometry args={[0.32, 0.024, 0.26]} />
       </mesh>
-      <group position={[0, 0.095, -0.1]}>
+      <group position={[0, THROAT_Y, -0.19]}>
         {COLS.flatMap((c) =>
           ROWS.map((r) => (
-            // every cell pivots at the shared throat and points out along its own axis
-            <group key={`${c}${r}`} position-y={r * 0.017} rotation={[-r * FAN_V * 0.5, c * FAN_H, 0]}>
+            <group key={`${c}${r}`} position-y={r * ROW_OFF} rotation={[-r * FAN_V, c * FAN_H, 0]}>
               <mesh geometry={cell} position-z={LEN / 2} material={shell} castShadow />
               <mesh geometry={cell} position-z={LEN / 2} material={inner} />
-              {/* mouth rim */}
               {[
-                [0, MH / 2, MW + 0.004, 0.004],
-                [0, -MH / 2, MW + 0.004, 0.004],
-                [MW / 2, 0, 0.004, MH],
-                [-MW / 2, 0, 0.004, MH],
+                [0, CH / 2, CW + 0.006, 0.006],
+                [0, -CH / 2, CW + 0.006, 0.006],
+                [CW / 2, 0, 0.006, CH],
+                [-CW / 2, 0, 0.006, CH],
               ].map(([x, y, w, h], i) => (
                 <mesh key={i} position={[x, y, LEN]} material={rim}>
-                  <boxGeometry args={[w, h, 0.006]} />
+                  <boxGeometry args={[w, h, 0.008]} />
                 </mesh>
               ))}
             </group>
           )),
         )}
-        {/* throat block + compression driver behind */}
-        <mesh position-z={-0.012} material={shell} castShadow>
-          <boxGeometry args={[0.05, 0.075, 0.04]} />
+        {/* throat block and the compression driver behind it */}
+        <mesh position-z={-0.02} material={shell} castShadow>
+          <boxGeometry args={[0.08, 0.1, 0.05]} />
         </mesh>
-        <mesh position={[0, -0.045, -0.012]} material={shell}>
-          <boxGeometry args={[0.04, 0.05, 0.04]} />
+        <mesh position={[0, -THROAT_Y / 2 + 0.02, -0.02]} material={shell}>
+          <boxGeometry args={[0.06, THROAT_Y - 0.04, 0.05]} />
         </mesh>
-        <mesh position-z={-0.068} rotation-x={Math.PI / 2} material={flat('#161514', { rough: 0.45, metal: 0.3 })} castShadow>
-          <cylinderGeometry args={[0.056, 0.056, 0.072, 28]} />
+        <mesh position-z={-0.09} rotation-x={Math.PI / 2} material={flat('#161514', { rough: 0.45, metal: 0.3 })} castShadow>
+          <cylinderGeometry args={[0.08, 0.08, 0.1, 32]} />
         </mesh>
       </group>
     </group>
@@ -211,7 +238,6 @@ function Horn() {
 }
 
 export function OjasSpeaker({ position, rotation = 0 }: { position: [number, number, number]; rotation?: number }) {
-  const cone = useRef<THREE.Group>(null)
   const body = useRef<THREE.Group>(null)
   useFrame(() => {
     if (!body.current) return
@@ -223,41 +249,40 @@ export function OjasSpeaker({ position, rotation = 0 }: { position: [number, num
     body.current.scale.set(k, 1 + kick * 0.01, k)
   })
 
-  const y0 = STAND
+  const y0 = FEET
   return (
     <group position={position} rotation-y={rotation}>
       <group ref={body}>
-      {/* open birch stand: a top board on two plywood sides, same build as the cabinet */}
-      <Panel size={[T, STAND - T, D - 0.04]} position={[-(W / 2 - 0.05), (STAND - T) / 2, 0]} vertical />
-      <Panel size={[T, STAND - T, D - 0.04]} position={[W / 2 - 0.05, (STAND - T) / 2, 0]} vertical />
-      <Panel size={[W - 0.06, T, D - 0.04]} position={[0, STAND - T / 2, 0]} vertical={false} />
-
-      {/* butt-joined birch cabinet: sides full height, top/bottom between them */}
-      <Panel size={[T, H, D]} position={[-W / 2 + T / 2, y0 + H / 2, 0]} vertical />
-      <Panel size={[T, H, D]} position={[W / 2 - T / 2, y0 + H / 2, 0]} vertical />
-      <Panel size={[W - 2 * T, T, D]} position={[0, y0 + H - T / 2, 0]} vertical={false} />
-      <Panel size={[W - 2 * T, T, D]} position={[0, y0 + T / 2, 0]} vertical={false} />
-      <mesh position={[0, y0 + H / 2, -D / 2 + T / 2]} material={woodMaterial(BIRCH, W, H)} castShadow>
-        <boxGeometry args={[W - 2 * T, H - 2 * T, T]} />
-      </mesh>
-
-      {/* recessed baffle, painted charcoal, with the woofer in its cut-out */}
-      <Baffle />
-      <Woofer cone={cone} />
-
-      {/* bass ports */}
-      {[-1, 1].map((s) => (
-        <group key={s} position={[s * 0.12, y0 + H * 0.83, BF + 0.003]}>
-          <mesh rotation-x={Math.PI / 2} material={flat(P.charcoal)}>
-            <cylinderGeometry args={[0.028, 0.028, 0.01, 24]} />
+        {/* small feet */}
+        {[
+          [-1, -1],
+          [1, -1],
+          [-1, 1],
+          [1, 1],
+        ].map(([sx, sz], i) => (
+          <mesh key={i} position={[sx * (W / 2 - 0.05), FEET / 2, sz * (D / 2 - 0.05)]} material={flat(P.charcoal)} castShadow>
+            <boxGeometry args={[0.05, FEET, 0.05]} />
           </mesh>
-          <mesh rotation-x={Math.PI / 2} position-z={0.001} material={flat('#141312')}>
-            <cylinderGeometry args={[0.021, 0.021, 0.012, 24]} />
-          </mesh>
-        </group>
-      ))}
+        ))}
 
-      <Horn />
+        {/* butt-joined birch cabinet: sides full height, top/bottom between them */}
+        <Panel size={[T, H, D]} position={[-W / 2 + T / 2, y0 + H / 2, 0]} vertical />
+        <Panel size={[T, H, D]} position={[W / 2 - T / 2, y0 + H / 2, 0]} vertical />
+        <Panel size={[W - 2 * T, T, D]} position={[0, y0 + H - T / 2, 0]} vertical={false} />
+        <Panel size={[W - 2 * T, T, D]} position={[0, y0 + T / 2, 0]} vertical={false} />
+        <mesh position={[0, y0 + H / 2, -D / 2 + T / 2]} material={woodMaterial(BIRCH, W, H)} castShadow>
+          <boxGeometry args={[W - 2 * T, H - 2 * T, T]} />
+        </mesh>
+
+        {/* birch front with the woofer and slot port cut out */}
+        <Baffle />
+        <Woofer />
+        {/* port tunnel, dark inside */}
+        <mesh position={[0, y0 + PORT_Y, BF - T - 0.05]} material={flat('#121110')}>
+          <boxGeometry args={[PORT_W, PORT_H, 0.1]} />
+        </mesh>
+
+        <Horn />
       </group>
     </group>
   )

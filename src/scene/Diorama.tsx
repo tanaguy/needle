@@ -252,14 +252,14 @@ export function Diorama() {
       <Cable />
 
       {/* OJAS-style horn speakers, toed in toward the DJ */}
-      <OjasSpeaker position={[-1.05, 0, -0.42]} rotation={0.22} />
-      <OjasSpeaker position={[1.05, 0, -0.42]} rotation={-0.22} />
+      <OjasSpeaker position={[-1.28, 0, -0.55]} rotation={0.3} />
+      <OjasSpeaker position={[1.28, 0, -0.55]} rotation={-0.3} />
 
       <Crate position={[-1.35, 0, 0.55]} rotation={0.25} seed={5} />
       <Crate position={[-0.95, 0, 1.05]} rotation={-0.35} seed={9} />
-      <Prop name="cardboardBoxOpen" position={[-1.7, 0, -0.2]} rotation={0.6} scale={1} tint={{ wood: P.cream, woodDark: P.sandSide }} />
+      <Prop name="cardboardBoxOpen" position={[-1.95, 0, 0.2]} rotation={0.6} scale={1} tint={{ wood: P.cream, woodDark: P.sandSide }} />
 
-      <Plant position={[-1.9, 0, -1.1]} scale={1.05} />
+      <Plant position={[-2.05, 0, -1.35]} scale={1.05} />
       <Lamp position={[1.85, 0, -1.0]} />
 
       <group position={[1.7, 0, 0.85]} rotation-y={-2.2}>

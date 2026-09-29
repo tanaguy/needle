@@ -18,7 +18,6 @@ const STAND = 0.3 // plinth height
 
 const BIRCH = '#E4CDA6'
 const PLY_DARK = '#C9A877'
-const ALU = '#C9C6BF'
 
 let plyCanvas: HTMLCanvasElement | null = null
 /** Stripes of a 13-ply Baltic birch edge. */
@@ -152,74 +151,86 @@ function flareGeometry(throatW: number, throatH: number, mouthW: number, mouthH:
 }
 
 /** Multicell horn: a flared aluminium mouth split into a 3 × 2 grid of cells. */
+/**
+ * Multicellular horn, cinema-style: a 3 × 2 bank of rectangular cells that all start at
+ * one throat and fan out, so the mouth forms a curved arc. Matte black.
+ */
 function Horn() {
-  const alu = useMemo(() => new THREE.MeshStandardMaterial({ color: ALU, roughness: 0.5, metalness: 0.55, side: THREE.DoubleSide, flatShading: true }), [])
-  const cast = flat('#B3B0A8', { rough: 0.7, metal: 0.4 })
-  const mouthW = 0.3
-  const mouthH = 0.14
-  const depth = 0.2
-  const flare = useMemo(() => flareGeometry(0.05, 0.04, mouthW, mouthH, depth), [])
-  const cy = mouthH / 2 + 0.012
+  // two blacks: a satin outer shell and a near-black interior, so each cell reads as a tube
+  const shell = useMemo(() => new THREE.MeshStandardMaterial({ color: '#2c2b29', roughness: 0.5, metalness: 0.2, side: THREE.FrontSide, flatShading: true }), [])
+  const inner = useMemo(() => new THREE.MeshStandardMaterial({ color: '#0c0b0a', roughness: 0.95, side: THREE.BackSide }), [])
+  const rim = flat('#4a4845', { rough: 0.5, metal: 0.2 })
+  const LEN = 0.19 // cell length, throat → mouth
+  const MW = 0.063 // mouth width: neighbours meet edge-to-edge at the mouth
+  const MH = 0.068
+  const cell = useMemo(() => flareGeometry(0.018, 0.03, MW, MH, LEN), [])
+  const COLS = [-1, 0, 1]
+  const ROWS = [-1, 1]
+  const FAN_H = 0.33 // radians between columns
+  const FAN_V = 0.19 // radians between rows
   return (
-    <group position={[0, H + STAND, 0.03]}>
-      <group position-y={cy}>
-        <mesh geometry={flare} material={alu} castShadow />
-        {/* dark throat plate deep inside */}
-        <mesh position-z={-depth / 2 + 0.002} material={flat('#141312')}>
-          <planeGeometry args={[0.05, 0.04]} />
+    <group position={[0, H + STAND, 0.02]}>
+      {/* base plate the horn rests on */}
+      <mesh position={[0, 0.006, -0.02]} material={shell} castShadow receiveShadow>
+        <boxGeometry args={[0.2, 0.012, 0.2]} />
+      </mesh>
+      <group position={[0, 0.095, -0.1]}>
+        {COLS.flatMap((c) =>
+          ROWS.map((r) => (
+            // every cell pivots at the shared throat and points out along its own axis
+            <group key={`${c}${r}`} position-y={r * 0.017} rotation={[-r * FAN_V * 0.5, c * FAN_H, 0]}>
+              <mesh geometry={cell} position-z={LEN / 2} material={shell} castShadow />
+              <mesh geometry={cell} position-z={LEN / 2} material={inner} />
+              {/* mouth rim */}
+              {[
+                [0, MH / 2, MW + 0.004, 0.004],
+                [0, -MH / 2, MW + 0.004, 0.004],
+                [MW / 2, 0, 0.004, MH],
+                [-MW / 2, 0, 0.004, MH],
+              ].map(([x, y, w, h], i) => (
+                <mesh key={i} position={[x, y, LEN]} material={rim}>
+                  <boxGeometry args={[w, h, 0.006]} />
+                </mesh>
+              ))}
+            </group>
+          )),
+        )}
+        {/* throat block + compression driver behind */}
+        <mesh position-z={-0.012} material={shell} castShadow>
+          <boxGeometry args={[0.05, 0.075, 0.04]} />
         </mesh>
-        {/* multicell dividers: 3 across × 2 high, following the flare */}
-        {[-1, 1].map((i) => (
-          <mesh key={`v${i}`} position={[(i * mouthW) / 6, 0, depth / 2 - 0.05]} rotation-y={i * 0.28} material={cast} castShadow>
-            <boxGeometry args={[0.005, mouthH - 0.01, 0.1]} />
-          </mesh>
-        ))}
-        <mesh position={[0, 0, depth / 2 - 0.05]} material={cast}>
-          <boxGeometry args={[mouthW - 0.02, 0.005, 0.1]} />
+        <mesh position={[0, -0.045, -0.012]} material={shell}>
+          <boxGeometry args={[0.04, 0.05, 0.04]} />
         </mesh>
-        {/* cast mouth rim */}
-        {[
-          [0, mouthH / 2 + 0.006, mouthW + 0.024, 0.012],
-          [0, -mouthH / 2 - 0.006, mouthW + 0.024, 0.012],
-          [mouthW / 2 + 0.006, 0, 0.012, mouthH],
-          [-mouthW / 2 - 0.006, 0, 0.012, mouthH],
-        ].map(([x, y, w, h], i) => (
-          <mesh key={i} position={[x, y, depth / 2]} material={cast} castShadow>
-            <boxGeometry args={[w, h, 0.014]} />
-          </mesh>
-        ))}
-        {/* compression driver on the throat */}
-        <mesh position={[0, 0, -depth / 2 - 0.035]} rotation-x={Math.PI / 2} material={flat(P.charcoal, { rough: 0.5 })} castShadow>
-          <cylinderGeometry args={[0.055, 0.055, 0.07, 24]} />
+        <mesh position-z={-0.068} rotation-x={Math.PI / 2} material={flat('#161514', { rough: 0.45, metal: 0.3 })} castShadow>
+          <cylinderGeometry args={[0.056, 0.056, 0.072, 28]} />
         </mesh>
       </group>
-      {/* cast feet */}
-      {[-1, 1].map((s) => (
-        <mesh key={s} position={[s * 0.1, 0.006, -0.02]} material={cast}>
-          <boxGeometry args={[0.03, 0.012, depth]} />
-        </mesh>
-      ))}
     </group>
   )
 }
 
 export function OjasSpeaker({ position, rotation = 0 }: { position: [number, number, number]; rotation?: number }) {
   const cone = useRef<THREE.Group>(null)
+  const body = useRef<THREE.Group>(null)
   useFrame(() => {
-    if (!cone.current) return
+    if (!body.current) return
     const s = useStore.getState()
     let kick = 0
     if (engine.started && !engine.beatPaused && !s.settings.reduceMotion) kick = Math.exp(-(engine.beatNow() % 1) * 9)
-    cone.current.position.z = kick * 0.012 // the woofer pushes out on the kick
+    // the whole speaker pumps on the kick, scaling from the floor
+    const k = 1 + kick * 0.022
+    body.current.scale.set(k, 1 + kick * 0.01, k)
   })
 
   const y0 = STAND
   return (
     <group position={position} rotation-y={rotation}>
-      {/* plinth: a darker, recessed stand */}
-      <mesh position-y={STAND / 2} material={woodMaterial(P.woodDark, W, 0.2)} castShadow receiveShadow>
-        <boxGeometry args={[W - 0.06, STAND, D - 0.06]} />
-      </mesh>
+      <group ref={body}>
+      {/* open birch stand: a top board on two plywood sides, same build as the cabinet */}
+      <Panel size={[T, STAND - T, D - 0.04]} position={[-(W / 2 - 0.05), (STAND - T) / 2, 0]} vertical />
+      <Panel size={[T, STAND - T, D - 0.04]} position={[W / 2 - 0.05, (STAND - T) / 2, 0]} vertical />
+      <Panel size={[W - 0.06, T, D - 0.04]} position={[0, STAND - T / 2, 0]} vertical={false} />
 
       {/* butt-joined birch cabinet: sides full height, top/bottom between them */}
       <Panel size={[T, H, D]} position={[-W / 2 + T / 2, y0 + H / 2, 0]} vertical />
@@ -247,6 +258,7 @@ export function OjasSpeaker({ position, rotation = 0 }: { position: [number, num
       ))}
 
       <Horn />
+      </group>
     </group>
   )
 }

@@ -16,7 +16,7 @@ type Msg =
   | { type: 'grab' }
   | { type: 'move'; d: number }
   | { type: 'release' }
-  | { type: 'fader'; open: boolean; rampMs: number }
+  | { type: 'fader'; open: boolean; rampMs: number; smooth: boolean }
   | { type: 'motor'; on: boolean; tauMs: number }
   | { type: 'cue' }
   | { type: 'level'; gain: number }
@@ -43,9 +43,13 @@ class ScratchProcessor extends AudioWorkletProcessor {
   motorOn = true
   motorTau = 0.03
 
-  fader = 0
+  /** fader travel 0 (closed) → 1 (open), moved at a constant rate */
+  faderPos = 0
   faderTarget = 0
-  faderCoef = 0.5
+  faderStep = 1
+  faderSmooth = false
+  /** resulting gain after the curve */
+  fader = 0
 
   level = 1
   lp = 0
@@ -102,7 +106,8 @@ class ScratchProcessor extends AudioWorkletProcessor {
         break
       case 'fader':
         this.faderTarget = m.open ? 1 : 0
-        this.faderCoef = 1 - Math.exp(-1 / (sampleRate * Math.max(m.rampMs, 0.3) / 1000 / 3))
+        this.faderStep = 1 / Math.max(1, (sampleRate * m.rampMs) / 1000) // full travel in rampMs
+        this.faderSmooth = m.smooth
         break
       case 'motor':
         this.motorOn = m.on
@@ -178,7 +183,15 @@ class ScratchProcessor extends AudioWorkletProcessor {
       this.lp += (s - this.lp) * a
       s = this.lp * amp
 
-      this.fader += (this.faderTarget - this.fader) * this.faderCoef
+      if (this.faderPos !== this.faderTarget) {
+        this.faderPos += this.faderPos < this.faderTarget ? this.faderStep : -this.faderStep
+        if (this.faderPos > 1) this.faderPos = 1
+        if (this.faderPos < 0) this.faderPos = 0
+        if (Math.abs(this.faderPos - this.faderTarget) < this.faderStep) this.faderPos = this.faderTarget
+      }
+      // sharp: gain follows travel (the ~1 ms travel only de-clicks)
+      // smooth: equal-power curve over a long glide — an audible fade in and out
+      this.fader = this.faderSmooth ? Math.sin((this.faderPos * Math.PI) / 2) : this.faderPos
       const v = s * this.fader * this.level
 
       for (let c = 0; c < out.length; c++) out[c][k] = v

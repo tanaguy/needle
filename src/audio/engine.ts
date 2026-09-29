@@ -7,6 +7,9 @@ import { useStore, getSettings, type BeatMeta, type SampleMeta, type Take } from
 export const TURN = 60 / (100 / 3)
 const LEAD = 0.25
 const HIST = 2048
+/** Fader travel time: sharp cut (just de-clicks) vs smooth blend (audible fade). */
+export const FADER_CUT_MS = 1
+export const FADER_SMOOTH_MS = 150
 
 /** Live deck telemetry, written by the audio thread's reports. Read it every frame; never put it in React state. */
 export const deck = {
@@ -300,8 +303,8 @@ class Engine {
     this.scratch?.port.postMessage({ type: 'cue' })
   }
   setFader(open: boolean) {
-    const ms = getSettings().faderCurve === 'cut' ? 0.8 : 22
-    this.scratch?.port.postMessage({ type: 'fader', open, rampMs: ms })
+    const smooth = getSettings().faderCurve === 'smooth'
+    this.scratch?.port.postMessage({ type: 'fader', open, rampMs: smooth ? FADER_SMOOTH_MS : FADER_CUT_MS, smooth })
   }
   setMotor(on: boolean) {
     useStore.getState().set({ motorOn: on })

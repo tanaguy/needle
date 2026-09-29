@@ -48,7 +48,9 @@ export function Mixer({ position }: { position: [number, number, number] }) {
     const open = useStore.getState().faderOpen
     if (xf.current) {
       // cap snaps fast — ~30 ms — so the eye reads the cut
-      xf.current.position.x = THREE.MathUtils.damp(xf.current.position.x, open ? -XF_TRAVEL : XF_TRAVEL, 34, dt)
+      // sharp: the cap snaps (~30 ms); smooth: it glides like the audio (~150 ms)
+      const rate = useStore.getState().settings.faderCurve === 'smooth' ? 14 : 34
+      xf.current.position.x = THREE.MathUtils.damp(xf.current.position.x, open ? -XF_TRAVEL : XF_TRAVEL, rate, dt)
     }
     // meters
     const a = Math.min(1, deck.peak * 1.3)

@@ -135,7 +135,7 @@ export function Settings() {
 
         <section className="sec">
           <h3 className="label">Sound</h3>
-          <Field label="Fader curve" hint={s.faderCurve === 'cut' ? 'Sharp cut — instant on/off, like a battle mixer.' : 'Smooth — a short fade in and out.'}>
+          <Field label="Fader curve" hint={s.faderCurve === 'cut' ? 'Sharp cut — instant on/off, like a battle mixer. Best for chirps and transformers.' : 'Smooth — each cut glides in and out over ~150 ms, like a blend-curve mixer.'}>
             <Seg
               label="Fader curve"
               value={s.faderCurve}

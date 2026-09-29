@@ -197,8 +197,17 @@ class Engine {
     }
     // several samples can come from one file, cut with start/end (seconds)
     const trim = (buf: AudioBuffer, start = 0, end = buf.duration) => {
-      const a = Math.max(0, Math.floor(start * buf.sampleRate))
+      let a = Math.max(0, Math.floor(start * buf.sampleRate))
       const b = Math.min(buf.length, Math.ceil(end * buf.sampleRate))
+      // Snap the start to the actual attack, so the cue sticker sits right on the sound.
+      // (Browsers disagree about MP3 encoder padding — Chrome keeps ~25 ms of it.)
+      const ch0 = buf.getChannelData(0)
+      let peak = 0
+      for (let i = a; i < b; i++) peak = Math.max(peak, Math.abs(ch0[i]))
+      const floor = Math.max(0.01, peak * 0.08)
+      let on = a
+      while (on < b && Math.abs(ch0[on]) < floor) on++
+      if (on < b) a = Math.max(a, on - Math.floor(0.002 * buf.sampleRate))
       if (a === 0 && b === buf.length) return buf
       const out = ctx.createBuffer(buf.numberOfChannels, Math.max(1, b - a), buf.sampleRate)
       const fade = Math.min(64, Math.floor((b - a) / 4)) // tiny fades so cut points don't click
@@ -218,7 +227,7 @@ class Engine {
       return cache.get(file)!
     }
     for (const e of manifest.samples ?? []) {
-      const id = `user-sample:${e.file}${e.start != null ? `@${e.start}` : ''}`
+      const id = `user-sample:${e.file}@${e.start ?? 0}-${e.end ?? 'end'}`
       const meta: SampleMeta = { id, name: e.name ?? e.file, note: 'Your crate', duration: 0, source: 'user', playable: false }
       try {
         const buf = trim(await decodeOnce(e.file), e.start, e.end)

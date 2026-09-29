@@ -1,6 +1,6 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { EffectComposer, N8AO, TiltShift2, ToneMapping, Vignette, Noise, HueSaturation, BrightnessContrast, SMAA } from '@react-three/postprocessing'
-import { BlendFunction, ToneMappingMode } from 'postprocessing'
+import { EffectComposer, N8AO, TiltShift2, ToneMapping, Vignette, HueSaturation, BrightnessContrast, SMAA } from '@react-three/postprocessing'
+import { ToneMappingMode } from 'postprocessing'
 import { Suspense, useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import { useStore } from '../store'
@@ -156,7 +156,6 @@ function PostFX() {
       <BrightnessContrast brightness={0.01} contrast={0.05} />
       <ToneMapping mode={ToneMappingMode.NEUTRAL} />
       <Vignette offset={0.32} darkness={0.42} />
-      <Noise premultiply opacity={0.22} blendFunction={BlendFunction.SOFT_LIGHT} />
       <SMAA />
     </EffectComposer>
   )

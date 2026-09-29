@@ -58,3 +58,7 @@ Add `?desktop` to the URL to skip the "made for a laptop" screen on narrow windo
 
 - 3D props: [Kenney Furniture Kit](https://kenney.nl/assets/furniture-kit) (CC0).
 - Fonts: Instrument Serif, Inter and JetBrains Mono (Google Fonts, OFL).
+
+## License
+
+The code and original assets are released into the public domain under [the Unlicense](LICENSE). Third-party material keeps its own terms (see `LICENSE`): the classic Ahh/Fresh sample is copyrighted and not covered, and the Kenney models are CC0.

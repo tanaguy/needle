@@ -49,7 +49,7 @@ export function Prop({ name, position = [0, 0, 0], rotation = 0, scale = 1, tint
       const recolor = (m: THREE.Material) => {
         const n = m.name
         const c = tint?.[n] ?? KENNEY_REMAP[n] ?? P.cream
-        return n === 'lamp' ? flat(c, { emissive: P.lamp, ei: 0.9 }) : flat(c)
+        return n === 'lamp' ? flat(c, { emissive: P.lamp, ei: 0.55 }) : flat(c)
       }
       mesh.material = Array.isArray(mesh.material) ? mesh.material.map(recolor) : recolor(mesh.material)
     })

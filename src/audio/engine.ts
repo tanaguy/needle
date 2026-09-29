@@ -54,7 +54,17 @@ class Engine {
   started = false
   ready = false
 
-  async init(progress: (p: number, label: string) => void) {
+  private initP: Promise<void> | null = null
+  private progressCb: (p: number, label: string) => void = () => {}
+
+  /** Idempotent — React StrictMode runs effects twice; there must only ever be one context. */
+  init(progress: (p: number, label: string) => void) {
+    this.progressCb = progress
+    this.initP ??= this.boot((p, l) => this.progressCb(p, l))
+    return this.initP
+  }
+
+  private async boot(progress: (p: number, label: string) => void) {
     if (typeof AudioWorkletNode === 'undefined' || typeof OfflineAudioContext === 'undefined') {
       throw new Error('unsupported')
     }
@@ -159,7 +169,8 @@ class Engine {
     }
     const decode = async (file: string) => {
       const res = await fetch(`/audio/user/${encodeURIComponent(file)}`)
-      if (!res.ok) throw new Error(`File not found (${res.status})`)
+      // dev servers answer missing files with index.html, so check the type too
+      if (!res.ok || (res.headers.get('content-type') ?? '').includes('text/html')) throw new Error('File not found in public/audio/user')
       return ctx.decodeAudioData(await res.arrayBuffer())
     }
     for (const e of manifest.beats ?? []) {

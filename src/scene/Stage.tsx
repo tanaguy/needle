@@ -65,6 +65,7 @@ function CameraRig() {
   const tmpLook = useRef(new THREE.Vector3())
   const first = useRef(true)
   const shift = useRef(0)
+  const shiftV = useRef(0)
 
   useFrame((state, dt) => {
     const s = useStore.getState()
@@ -77,6 +78,7 @@ function CameraRig() {
     const aspect = state.size.width / state.size.height
     let fov = 20
     let shiftPx = 0
+    let shiftY = 0
     if (s.phase === 'loading' || s.phase === 'title') {
       // slow orbit around the diorama, framed to the right of the title text
       const a = 0.56 + (reduce ? 0 : Math.sin(t * 0.05) * 0.22)
@@ -98,7 +100,13 @@ function CameraRig() {
         wantW = 0.62 / free
         shiftPx = (state.size.width - state.size.width * free) / 2
       }
-      fov = THREE.MathUtils.clamp(THREE.MathUtils.radToDeg(2 * Math.atan(wantW / (2 * d * aspect))), 14, 40)
+      // ...and enough height that the deck clears the HUD above and the strip below
+      const wantH = s.settings.camera === 'room' && s.phase === 'session' ? 3.6 : s.phase === 'onboarding' ? 0.5 : 0.78
+      const byW = 2 * Math.atan(wantW / (2 * d * aspect))
+      const byH = 2 * Math.atan(wantH / (2 * d))
+      fov = THREE.MathUtils.clamp(THREE.MathUtils.radToDeg(Math.max(byW, byH)), 14, 42)
+      // the strip at the bottom is taller than the HUD at the top: nudge the subject up
+      if (s.phase === 'session') shiftY = 44
       // gentle parallax when idle
       const idle = performance.now() - lastPlatterInput() > 1500 && s.settings.gesture === 'swipe'
       if (!reduce && idle && !s.panel) {
@@ -118,8 +126,9 @@ function CameraRig() {
     look.current.z = THREE.MathUtils.damp(look.current.z, targetLook.z, lam, dt)
     cam.lookAt(look.current)
     shift.current = THREE.MathUtils.damp(shift.current, shiftPx, lam, dt)
+    shiftV.current = THREE.MathUtils.damp(shiftV.current, shiftY, lam, dt)
     const { width: w, height: h } = state.size
-    if (Math.abs(shift.current) > 0.5) cam.setViewOffset(w, h, -shift.current, 0, w, h)
+    if (Math.abs(shift.current) > 0.5 || Math.abs(shiftV.current) > 0.5) cam.setViewOffset(w, h, -shift.current, shiftV.current, w, h)
     else if (cam.view?.enabled) cam.clearViewOffset()
     if (Math.abs(cam.fov - fov) > 0.01) cam.fov = THREE.MathUtils.damp(cam.fov, fov, lam, dt)
     cam.updateProjectionMatrix()

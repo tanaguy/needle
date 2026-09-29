@@ -33,7 +33,7 @@ export default function App() {
     let alive = true
     engine
       .init((p, label) => alive && set({ load: p, loadLabel: label }))
-      .catch(() => alive && set({ notice: { kind: 'unsupported' } }))
+      .catch(() => set({ notice: { kind: 'unsupported' } }))
     return () => {
       alive = false
     }

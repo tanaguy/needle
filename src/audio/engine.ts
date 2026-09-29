@@ -188,38 +188,74 @@ class Engine {
   }
 
   // ─── Beat deck ──────────────────────────────────────────────
-  selectBeat(id: string) {
-    const b = this.beats.get(id)
-    if (!b?.buf || !this.ctx) return
-    const ctx = this.ctx
-    const now = ctx.currentTime + 0.02
+  beatPaused = false
+  /** seconds into the loop where playback stopped */
+  private pausedAt = 0
+
+  private stopBeatSource(at: number) {
     if (this.beatSrc && this.beatGain) {
-      const g = this.beatGain
-      g.gain.setTargetAtTime(0, now, 0.01)
-      this.beatSrc.stop(now + 0.08)
+      this.beatGain.gain.setTargetAtTime(0, at, 0.01)
+      this.beatSrc.stop(at + 0.08)
     }
+    this.beatSrc = null
+    this.beatGain = null
+  }
+
+  private startBeatSource(buf: AudioBuffer, offset: number) {
+    const ctx = this.ctx!
+    const now = ctx.currentTime + 0.02
+    this.stopBeatSource(now)
     const src = ctx.createBufferSource()
-    src.buffer = b.buf
+    src.buffer = buf
     src.loop = true
     const g = ctx.createGain()
     g.gain.setValueAtTime(0, now)
     g.gain.linearRampToValueAtTime(1, now + 0.01)
     src.connect(g)
     g.connect(this.beatBus)
-    src.start(now)
+    src.start(now, offset)
     this.beatSrc = src
     this.beatGain = g
-    this.beatT0 = now
+    this.beatT0 = now - offset
+  }
+
+  selectBeat(id: string) {
+    const b = this.beats.get(id)
+    if (!b?.buf || !this.ctx) return
+    this.startBeatSource(b.buf, 0)
+    this.setBeatPaused(false)
     this.beatId = id
     this.bpm = b.meta.bpm
     this.beatLoopBeats = (b.buf.duration * this.bpm) / 60
     useStore.getState().setSettings({ beatId: id })
   }
 
-  /** Beat position (in beats, fractional) as currently heard. */
+  /** Stop the loop where it is, or pick it back up from the same spot. */
+  toggleBeatPause() {
+    const b = this.beats.get(this.beatId)
+    if (!b?.buf || !this.ctx || !this.started) return
+    if (this.beatPaused) {
+      this.startBeatSource(b.buf, this.pausedAt)
+      this.setBeatPaused(false)
+    } else {
+      const len = b.buf.duration
+      const t = this.ctx.currentTime - this.beatT0
+      this.pausedAt = ((t % len) + len) % len
+      this.stopBeatSource(this.ctx.currentTime)
+      this.setBeatPaused(true)
+    }
+  }
+
+  private setBeatPaused(p: boolean) {
+    this.beatPaused = p
+    useStore.getState().set({ beatPaused: p })
+  }
+
+  /** Beat position (in beats, fractional) as currently heard. Frozen while paused. */
   beatNow(): number {
     const ctx = this.ctx
     if (!ctx || !this.started) return 0
+    if (this.beatPaused) return (this.pausedAt * this.bpm) / 60
     const lat = (ctx.outputLatency || 0) + (ctx.baseLatency || 0)
     const t = ctx.currentTime - lat - this.beatT0
     return Math.max(0, (t * this.bpm) / 60)
@@ -391,9 +427,10 @@ class Engine {
     }
   }
 
-  pauseBeat(paused: boolean) {
+  /** Silence the beat bus without stopping the loop (used under take playback). */
+  muteBeat(muted: boolean) {
     if (!this.ctx) return
-    this.beatBus.gain.setTargetAtTime(paused ? 0 : getSettings().beatLevel, this.ctx.currentTime, 0.03)
+    this.beatBus.gain.setTargetAtTime(muted ? 0 : getSettings().beatLevel, this.ctx.currentTime, 0.03)
   }
 }
 

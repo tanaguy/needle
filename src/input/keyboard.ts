@@ -1,6 +1,6 @@
 import { engine } from '../audio/engine'
 import { useStore } from '../store'
-import { cycleSample, selectBeatIndex, toggleCamera, toggleMotor, toggleRecord } from '../actions'
+import { cycleSample, selectBeatIndex, toggleBeatPause, toggleCamera, toggleMotor, toggleRecord } from '../actions'
 import type { Action } from './bindings'
 import { FEATURES } from '../config'
 
@@ -103,6 +103,9 @@ export function attachKeyboard() {
         break
       case 'camera':
         toggleCamera()
+        break
+      case 'pauseBeat':
+        toggleBeatPause()
         break
       case 'crate':
         if (s.phase === 'session') s.set({ panel: 'crate', help: false })

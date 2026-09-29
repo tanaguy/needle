@@ -292,12 +292,19 @@ export function Turntable({ kind, position }: Props) {
 
   const playing = () => (kind === 'beat' ? true : useStore.getState().phase !== 'title' && useStore.getState().phase !== 'loading')
 
-  useFrame((state) => {
+  const beatSpeed = useRef(0)
+  const beatTurns = useRef(0)
+
+  useFrame((state, dt) => {
     if (!spin.current) return
     let turns: number
     if (kind === 'beat') {
-      const t = engine.ctx && engine.started ? engine.ctx.currentTime : state.clock.elapsedTime * 0.25
-      turns = t / TURN
+      // motor model: winds down when the beat is paused, spins back up when it plays
+      const want = !engine.started ? 0.25 : engine.beatPaused ? 0 : 1
+      const tau = want > beatSpeed.current ? 0.12 : 0.45
+      beatSpeed.current += (want - beatSpeed.current) * (1 - Math.exp(-dt / tau))
+      beatTurns.current += (beatSpeed.current * dt) / TURN
+      turns = beatTurns.current
     } else if (engine.started) {
       turns = (engine.platterNow() - deck.lead) / TURN
     } else {
@@ -306,7 +313,7 @@ export function Turntable({ kind, position }: Props) {
     spin.current.rotation.y = -turns * Math.PI * 2
     if (strobe.current) {
       // the strobe "locks" when the record runs at motor speed
-      const v = kind === 'beat' ? 1 : engine.started ? Math.abs(deck.vel) : 0
+      const v = kind === 'beat' ? beatSpeed.current : engine.started ? Math.abs(deck.vel) : 0
       const lock = Math.max(0, 1 - Math.abs(v - 1) * 6)
       strobe.current.emissiveIntensity = 0.4 + lock * 1.4
     }

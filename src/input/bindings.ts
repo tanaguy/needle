@@ -9,6 +9,7 @@ export type Action =
   | 'motor'
   | 'record'
   | 'camera'
+  | 'pauseBeat'
   | 'crate'
   | 'help'
   | 'prevSample'
@@ -25,6 +26,7 @@ export const DEFAULT_BINDINGS: Bindings = {
   motor: 'KeyM',
   record: FEATURES.recording ? 'KeyC' : '',
   camera: 'KeyR',
+  pauseBeat: 'KeyP',
   crate: 'Tab',
   help: 'Slash',
   prevSample: 'BracketLeft',
@@ -40,6 +42,7 @@ export const ACTION_LABEL: Record<Action, string> = {
   motor: 'Motor on / off',
   record: 'Record take',
   camera: 'Deck / Room view',
+  pauseBeat: 'Pause / play beat',
   crate: 'Open crate',
   help: 'Show keys',
   prevSample: 'Previous sample',
@@ -55,6 +58,7 @@ export const REBINDABLE: Action[] = ([
   'motor',
   'record',
   'camera',
+  'pauseBeat',
   'crate',
   'prevSample',
   'nextSample',

@@ -19,10 +19,10 @@ export function TakeReview({ take }: { take: Take }) {
   const head = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    engine.pauseBeat(true)
+    engine.muteBeat(true)
     return () => {
       player.current?.stop()
-      engine.pauseBeat(false)
+      engine.muteBeat(false)
     }
   }, [])
 

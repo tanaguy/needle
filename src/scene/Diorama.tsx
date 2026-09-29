@@ -168,7 +168,7 @@ function Cable() {
 /** Beat-driven life: speakers pump, lamp breathes, plant sways. */
 function useBeatPulse() {
   return () => {
-    if (!engine.started) return { kick: 0, bar: 0 }
+    if (!engine.started || engine.beatPaused) return { kick: 0, bar: 0 }
     const b = engine.beatNow()
     const reduce = useStore.getState().settings.reduceMotion
     const kick = reduce ? 0 : Math.exp(-(b % 1) * 9)

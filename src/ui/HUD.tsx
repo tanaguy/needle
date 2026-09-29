@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import { engine } from '../audio/engine'
-import { toggleRecord } from '../actions'
+import { toggleBeatPause, toggleRecord } from '../actions'
 import { keyLabel, ACTION_LABEL, type Action } from '../input/bindings'
 import { useStore } from '../store'
 import { fade, rise } from './motion'
@@ -60,7 +60,7 @@ function Key({ a }: { a: Action }) {
 
 function HelpCard() {
   const gesture = useStore((s) => s.settings.gesture)
-  const rows = (['fader', 'faderA', 'faderB', 'hamster', 'cue', 'camera', 'motor', 'record', 'crate', 'prevSample', 'nextSample'] as Action[]).filter(
+  const rows = (['fader', 'faderA', 'faderB', 'hamster', 'cue', 'pauseBeat', 'camera', 'motor', 'record', 'crate', 'prevSample', 'nextSample'] as Action[]).filter(
     (a) => a !== 'record' || FEATURES.recording,
   )
   return (
@@ -114,6 +114,7 @@ export function HUD() {
   const take = useStore((s) => s.take)
   const help = useStore((s) => s.help)
   const gesture = useStore((s) => s.settings.gesture)
+  const beatPaused = useStore((s) => s.beatPaused)
   const set = useStore((s) => s.set)
   const [hints, setHints] = useState(true)
 
@@ -134,7 +135,20 @@ export function HUD() {
         <div className="hud-bpm">
           <span className="serif hud-bpm-n">{beat?.bpm ?? '--'}</span>
           <span className="label">BPM</span>
-          <BeatDots />
+          {beatPaused ? <span className="label" style={{ color: 'var(--accent)' }}>Paused</span> : <BeatDots />}
+          <button className="playpause" onClick={() => toggleBeatPause()} aria-label={beatPaused ? 'Play beat' : 'Pause beat'} aria-pressed={beatPaused}>
+            {beatPaused ? (
+              <svg width="9" height="10" viewBox="0 0 9 10" aria-hidden>
+                <path d="M0 0 L9 5 L0 10 Z" fill="currentColor" />
+              </svg>
+            ) : (
+              <svg width="9" height="10" viewBox="0 0 9 10" aria-hidden>
+                <rect x="0.5" y="0" width="2.8" height="10" fill="currentColor" />
+                <rect x="5.7" y="0" width="2.8" height="10" fill="currentColor" />
+              </svg>
+            )}
+            <Key a="pauseBeat" />
+          </button>
         </div>
       </motion.div>
 
@@ -176,6 +190,9 @@ export function HUD() {
                 <Key a="cue" /> back to cue
               </span>
               <span>
+                <Key a="pauseBeat" /> pause beat
+              </span>
+              <span>
                 <Key a="camera" /> room view
               </span>
               <span>
@@ -213,6 +230,8 @@ export function HUD() {
         .hud-beat { font-size: 30px; line-height: 1.05; margin-top: 4px; }
         .hud-bpm { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
         .hud-bpm-n { font-size: 22px; }
+        .playpause { display: inline-flex; align-items: center; gap: 6px; margin-left: 4px; padding: 2px 2px 2px 8px; border-left: 1px solid var(--hair); color: var(--ink-2); }
+        .playpause:hover { color: var(--ink); }
         .hud-tr { position: absolute; top: 16px; right: var(--gutter); display: flex; gap: 16px; align-items: center; padding: 6px 6px 6px 16px; border-radius: 999px; }
         .hud-tr .btn-ghost { gap: 8px; font-size: 11px; }
         .rec { height: 34px; padding: 0 12px 0 12px; gap: 9px; font-size: 11px; }

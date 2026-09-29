@@ -40,6 +40,11 @@ export function cycleSample(dir: 1 | -1) {
   if (next) selectSample(next.id)
 }
 
+export function toggleBeatPause() {
+  engine.toggleBeatPause()
+  st().set({ announce: engine.beatPaused ? 'Beat paused' : 'Beat playing' })
+}
+
 export function toggleMotor() {
   const on = !st().motorOn
   engine.setMotor(on)

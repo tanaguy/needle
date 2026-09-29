@@ -21,6 +21,7 @@ npm run build
 | `1`–`4` | Change beat |
 | `[` `]` | Change sample |
 | `M` | Motor on/off |
+| `P` | Pause / play the beat (resumes where it stopped) |
 | `R` | Switch between Deck and Room views |
 | `Tab` | Crate |
 | `Esc` | Settings |

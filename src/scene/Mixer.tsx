@@ -53,7 +53,7 @@ export function Mixer({ position }: { position: [number, number, number] }) {
     // meters
     const a = Math.min(1, deck.peak * 1.3)
     const beatPhase = engine.started ? engine.beatNow() % 1 : 0
-    const b = engine.started ? 0.55 + 0.4 * Math.exp(-beatPhase * 5) : 0
+    const b = engine.started && !engine.beatPaused ? 0.55 + 0.4 * Math.exp(-beatPhase * 5) : 0
     const L = levels.current
     L.a = a > L.a ? a : THREE.MathUtils.damp(L.a, a, 7, dt)
     L.b = b > L.b ? b : THREE.MathUtils.damp(L.b, b, 7, dt)

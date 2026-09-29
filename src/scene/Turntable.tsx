@@ -1,6 +1,6 @@
 import { RoundedBox } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { deck, engine, TURN } from '../audio/engine'
 import { useStore } from '../store'
@@ -37,6 +37,82 @@ const PLAY_ANGLE = (() => {
   return best
 })()
 
+type BeatLabel = { name: string; bpm: number; bg: string; ink: string; motif: 'rings' | 'sun' | 'hatch' | 'dots' }
+const BEAT_LABELS: Record<string, Omit<BeatLabel, 'name' | 'bpm'>> = {
+  'boom-bap': { bg: P.teal, ink: P.offwhite, motif: 'rings' },
+  lofi: { bg: P.clay, ink: P.cream, motif: 'sun' },
+  breaks: { bg: P.olive, ink: P.offwhite, motif: 'hatch' },
+  minimal: { bg: P.offwhite, ink: P.charcoal, motif: 'dots' },
+}
+
+/** Each beat pressed on its own record: colour, motif, name and tempo on the label. */
+function beatLabelTexture(b: BeatLabel, ready: boolean) {
+  const c = document.createElement('canvas')
+  const S = 512
+  c.width = c.height = S
+  const g = c.getContext('2d')!
+  const R = S / 2
+  g.save()
+  g.beginPath()
+  g.arc(R, R, R, 0, Math.PI * 2)
+  g.clip()
+  g.fillStyle = b.bg
+  g.fillRect(0, 0, S, S)
+  g.strokeStyle = b.ink
+  g.fillStyle = b.ink
+  g.globalAlpha = 0.28
+  if (b.motif === 'rings') {
+    g.lineWidth = 7
+    for (const r of [R - 40, R - 62, R - 84]) {
+      g.beginPath()
+      g.arc(R, R, r, Math.PI * 1.08, Math.PI * 1.92)
+      g.stroke()
+    }
+  } else if (b.motif === 'sun') {
+    g.beginPath()
+    g.arc(R, R - 40, 118, Math.PI, 0)
+    g.fill()
+    g.fillRect(R - 150, R - 34, 300, 6)
+  } else if (b.motif === 'hatch') {
+    g.lineWidth = 9
+    for (let x = -S; x < S * 2; x += 30) {
+      g.beginPath()
+      g.moveTo(x, R - 150)
+      g.lineTo(x + 90, R - 60)
+      g.stroke()
+    }
+  } else {
+    for (let i = 0; i < 4; i++) {
+      g.beginPath()
+      g.arc(R - 96 + i * 64, R - 118, i === 0 ? 20 : 14, 0, Math.PI * 2)
+      g.fill()
+    }
+  }
+  g.restore()
+  g.globalAlpha = 1
+  g.strokeStyle = b.ink
+  g.globalAlpha = 0.5
+  g.lineWidth = 2
+  g.beginPath()
+  g.arc(R, R, R - 26, 0, Math.PI * 2)
+  g.stroke()
+  g.globalAlpha = 1
+  g.fillStyle = b.ink
+  g.textAlign = 'center'
+  g.textBaseline = 'middle'
+  const serif = ready ? '"Instrument Serif", Georgia, serif' : 'Georgia, serif'
+  const sans = ready ? 'Inter, sans-serif' : 'sans-serif'
+  let size = 104
+  g.font = `italic ${size}px ${serif}`
+  while (g.measureText(b.name).width > S * 0.78 && size > 50) g.font = `italic ${(size -= 6)}px ${serif}`
+  g.fillText(b.name, R, R + 20)
+  g.font = `500 22px ${sans}`
+  g.letterSpacing = '6px'
+  g.fillText(`SIDE B  ·  ${b.bpm} BPM`, R, R + 106)
+  g.fillText('33⅓', R, R + 150)
+  return new THREE.CanvasTexture(c)
+}
+
 function labelTexture(kind: 'scratch' | 'beat', ready: boolean) {
   const c = document.createElement('canvas')
   const S = 512
@@ -70,12 +146,33 @@ function labelTexture(kind: 'scratch' | 'beat', ready: boolean) {
 
 function Vinyl({ kind }: { kind: 'scratch' | 'beat' }) {
   const ready = useFontsReady()
+  const beatId = useStore((s) => (kind === 'beat' ? s.settings.beatId : ''))
+  const beat = useStore((s) => (kind === 'beat' ? s.beats.find((b) => b.id === beatId) : undefined))
   const tex = useMemo(() => {
-    const t = labelTexture(kind, ready)
+    const look = BEAT_LABELS[beatId] ?? { bg: P.teal, ink: P.offwhite, motif: 'rings' as const }
+    const t = kind === 'beat' && beat ? beatLabelTexture({ ...look, name: beat.name, bpm: beat.bpm }, ready) : labelTexture(kind, ready)
     t.colorSpace = THREE.SRGBColorSpace
     t.anisotropy = 4
     return t
-  }, [kind, ready])
+  }, [kind, ready, beat, beatId])
+  useEffect(() => () => tex.dispose(), [tex])
+
+  // a new record goes on: lift it off the platter and drop it back down
+  const lift = useRef<THREE.Group>(null)
+  const swapAt = useRef(-1)
+  useEffect(() => {
+    if (kind === 'beat' && beatId) swapAt.current = performance.now()
+  }, [kind, beatId])
+  useFrame(() => {
+    if (!lift.current || swapAt.current < 0) return
+    const p = (performance.now() - swapAt.current) / 650
+    if (p >= 1) {
+      lift.current.position.y = 0
+      swapAt.current = -1
+      return
+    }
+    lift.current.position.y = Math.sin(p * Math.PI) * 0.035
+  })
   const rings = [
     [0.056, 0.066, '#232220'],
     [0.07, 0.098, '#1f1e1c'],
@@ -83,7 +180,7 @@ function Vinyl({ kind }: { kind: 'scratch' | 'beat' }) {
     [0.127, 0.147, '#1f1e1c'],
   ] as const
   return (
-    <group>
+    <group ref={lift}>
       {/* slipmat */}
       <mesh position-y={0.0015} receiveShadow castShadow material={flat(P.charcoal, { rough: 1 })}>
         <cylinderGeometry args={[0.151, 0.151, 0.003, 64]} />

@@ -18,7 +18,8 @@ export async function toggleRecord() {
 export function selectBeat(id: string) {
   engine.selectBeat(id)
   const b = st().beats.find((x) => x.id === id)
-  if (b) st().set({ announce: `Beat: ${b.name}, ${b.bpm} BPM` })
+  // glide over to the beat deck to watch the new record go on, then come back
+  if (b) st().set({ announce: `Beat: ${b.name}, ${b.bpm} BPM`, beatFocusUntil: performance.now() + 2600 })
 }
 
 export function selectBeatIndex(i: number) {

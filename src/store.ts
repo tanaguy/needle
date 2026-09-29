@@ -65,6 +65,8 @@ type State = {
   take: Take | null
   notice: Notice
   announce: string
+  /** performance.now() until which the camera visits the beat deck */
+  beatFocusUntil: number
   set: (p: Partial<State>) => void
   setSettings: (p: Partial<Settings>) => void
 }
@@ -143,6 +145,7 @@ export const useStore = create<State>((set, get) => ({
   take: null,
   notice: null,
   announce: '',
+  beatFocusUntil: 0,
   set: (p) => set(p),
   setSettings: (p) => {
     const next = { ...get().settings, ...p }

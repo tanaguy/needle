@@ -7,7 +7,7 @@ import { useStore } from '../store'
 import { P } from '../palette'
 import { lastPlatterInput } from '../input/trackpad'
 import { RectAreaLightUniformsLib } from 'three/examples/jsm/lights/RectAreaLightUniformsLib.js'
-import { Diorama, SCRATCH_POS } from './Diorama'
+import { BEAT_POS, Diorama, SCRATCH_POS } from './Diorama'
 
 RectAreaLightUniformsLib.init()
 
@@ -57,8 +57,12 @@ function Lighting() {
 type Shot = { pos: THREE.Vector3; look: THREE.Vector3 }
 
 const deckLook = new THREE.Vector3(SCRATCH_POS[0] + 0.17, SCRATCH_POS[1] + 0.02, SCRATCH_POS[2] + 0.02)
-const SHOTS: Record<'deck' | 'room' | 'onboard', Shot> = {
+const SHOTS: Record<'deck' | 'room' | 'onboard' | 'beat', Shot> = {
   deck: { look: deckLook, pos: deckLook.clone().add(new THREE.Vector3(0.0, 1.62, 1.28)) },
+  beat: {
+    look: new THREE.Vector3(BEAT_POS[0] - 0.03, BEAT_POS[1] + 0.1, BEAT_POS[2] + 0.02),
+    pos: new THREE.Vector3(BEAT_POS[0] + 0.02, BEAT_POS[1] + 1.45, BEAT_POS[2] + 1.1),
+  },
   onboard: {
     look: new THREE.Vector3(SCRATCH_POS[0] - 0.03, SCRATCH_POS[1] + 0.1, SCRATCH_POS[2] + 0.02),
     pos: new THREE.Vector3(SCRATCH_POS[0] + 0.02, SCRATCH_POS[1] + 1.55, SCRATCH_POS[2] + 1.15),
@@ -96,20 +100,23 @@ function CameraRig() {
       targetLook.set(-Math.cos(a) * shift, 0.35, Math.sin(a) * shift)
       fov = aspect < 1.25 ? 26 : 20
     } else {
-      const shot = s.phase === 'onboarding' ? SHOTS.onboard : SHOTS[s.settings.camera]
+      const beatFocus = s.phase === 'session' && performance.now() < s.beatFocusUntil
+      const shot = s.phase === 'onboarding' ? SHOTS.onboard : beatFocus ? SHOTS.beat : SHOTS[s.settings.camera]
       target.copy(shot.pos)
       targetLook.copy(shot.look)
       // keep the same slice of the world in frame whatever the window shape
       const d = shot.pos.distanceTo(shot.look)
-      let wantW = s.settings.camera === 'room' && s.phase === 'session' ? 6.4 : 1.12
-      if (s.phase === 'onboarding') {
-        // the setup card covers the left ~440px: frame the deck in what's left
+      const room = s.settings.camera === 'room' && s.phase === 'session' && !beatFocus
+      let wantW = room ? 6.4 : beatFocus ? 0.66 : 1.12
+      // a card on the left (setup card, or the crate while picking a beat) covers ~440px:
+      // frame the subject in what's left
+      if (s.phase === 'onboarding' || (beatFocus && s.panel === 'crate')) {
         const free = Math.max(0.35, (state.size.width - 440) / state.size.width)
-        wantW = 0.62 / free
+        wantW = (s.phase === 'onboarding' ? 0.62 : 0.66) / free
         shiftPx = (state.size.width - state.size.width * free) / 2
       }
       // ...and enough height that the deck clears the HUD above and the strip below
-      const wantH = s.settings.camera === 'room' && s.phase === 'session' ? 3.6 : s.phase === 'onboarding' ? 0.5 : 0.78
+      const wantH = room ? 3.6 : s.phase === 'onboarding' || beatFocus ? 0.5 : 0.78
       const byW = 2 * Math.atan(wantW / (2 * d * aspect))
       const byH = 2 * Math.atan(wantH / (2 * d))
       fov = THREE.MathUtils.clamp(THREE.MathUtils.radToDeg(Math.max(byW, byH)), 14, 42)

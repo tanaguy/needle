@@ -2,6 +2,4 @@ node_modules
 dist
 .DS_Store
 *.local
-# classic record samples are copyrighted — keep them on this machine only
-public/audio/classic/
 .trash/

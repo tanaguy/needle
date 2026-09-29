@@ -39,7 +39,7 @@ Add `?desktop` to the URL to skip the "made for a laptop" screen on narrow windo
 
 ## Samples
 
-"Ahh", "Fresh" and "Ahh → Fresh" are cut from `public/audio/classic/ahh-fresh.mp3`, the classic battle-record sample from [Studio Scratches](https://studioscratches.com/classic-ahhh-and-fresh-samples-download/). It's copyrighted, so it's git-ignored. Without it, the app falls back to synthesized voices.
+"Ahh", "Fresh" and "Ahh → Fresh" are cut from `public/audio/classic/ahh-fresh.mp3`, the classic battle-record sample from [Studio Scratches](https://studioscratches.com/classic-ahhh-and-fresh-samples-download/). It's copyrighted, so it's committed only because this repo is private. Remove it before making the repo public or deploying anywhere public. Without it, the app falls back to synthesized voices.
 
 ## How it works
 

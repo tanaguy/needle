@@ -1,6 +1,7 @@
 import { engine, deck } from '../audio/engine'
 import { getSettings, useStore } from '../store'
 import { MomentumFilter } from './momentum'
+import { hover, nudgeLevel } from '../controls'
 
 type RawListener = (px: number, kind: 'swipe' | 'drag') => void
 const rawListeners = new Set<RawListener>()
@@ -21,6 +22,7 @@ function active() {
 
 export function attachTrackpad(surface: HTMLElement) {
   const mf = new MomentumFilter()
+  let lastWheelScratch = 0
 
   const onWheel = (e: WheelEvent) => {
     // never let the page scroll or zoom while playing
@@ -28,8 +30,20 @@ export function attachTrackpad(surface: HTMLElement) {
     e.preventDefault()
     if (e.ctrlKey) return // pinch-zoom gesture
     const s = getSettings()
-    if (s.gesture !== 'swipe') return
     const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1
+
+    // Pointer resting on a mixer fader: the scroll moves the fader, not the record —
+    // unless a scratch is already under way (the cursor doesn't move while you scroll).
+    const target = hover.held ?? hover.over
+    const scratching = performance.now() - lastWheelScratch < 180
+    if (target && !scratching) {
+      // fingers up (away from you) = fader up = louder, like a real channel fader
+      nudgeLevel(target, (e.deltaY * unit) / 420)
+      return
+    }
+
+    if (s.gesture !== 'swipe') return
+    lastWheelScratch = performance.now()
     let px = (e.deltaY + e.deltaX) * unit
     if (s.invert) px = -px
     const verdict = mf.push(px, e.timeStamp)
@@ -45,6 +59,7 @@ export function attachTrackpad(surface: HTMLElement) {
   const onDown = (e: PointerEvent) => {
     if (!active() || getSettings().gesture !== 'drag' || e.button !== 0) return
     if (!(e.target instanceof Node) || !surface.contains(e.target)) return
+    if (hover.over) return // pressing a fader, not the record
     dragging = e.pointerId
     surface.setPointerCapture(e.pointerId)
     surface.classList.add('is-holding')

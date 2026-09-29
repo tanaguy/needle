@@ -169,8 +169,10 @@ export function Stage({ onReady }: { onReady?: () => void }) {
       dpr={quality === 'high' ? [1, 2] : 1}
       gl={{ antialias: false, powerPreference: 'high-performance', stencil: false }}
       camera={{ fov: 20, near: 0.1, far: 60, position: [6, 7.6, 9] }}
-      onCreated={({ gl }) => {
+      onCreated={(state) => {
+        const { gl } = state
         gl.toneMapping = THREE.NoToneMapping
+        if (import.meta.env.DEV) (window as unknown as { r3f: typeof state }).r3f = state
         onReady?.()
       }}
     >

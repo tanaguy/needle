@@ -1,11 +1,12 @@
-import { RoundedBox } from '@react-three/drei'
-import { useFrame } from '@react-three/fiber'
-import { useMemo, useRef } from 'react'
+import { Html, RoundedBox } from '@react-three/drei'
+import { useFrame, type ThreeEvent } from '@react-three/fiber'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { deck, engine } from '../audio/engine'
 import { useStore } from '../store'
 import { P } from '../palette'
 import { flat } from './materials'
+import { CHANNEL_LABEL, hover, setLevel, type Channel } from '../controls'
 
 const W = 0.26
 const D = 0.36
@@ -93,17 +94,9 @@ export function Mixer({ position }: { position: [number, number, number] }) {
         </group>
       ))}
 
-      {/* line faders */}
-      {[-0.045, 0.045].map((x) => (
-        <group key={x}>
-          <mesh position={[x, TOP + 0.0012, 0.05]} material={slot}>
-            <boxGeometry args={[0.005, 0.002, 0.09]} />
-          </mesh>
-          <mesh position={[x, TOP + 0.007, 0.018]} castShadow material={cap}>
-            <boxGeometry args={[0.02, 0.012, 0.012]} />
-          </mesh>
-        </group>
-      ))}
+      {/* channel faders: A = scratch deck (left), B = beat deck (right) */}
+      <LineFader x={-0.045} channel="sampleLevel" />
+      <LineFader x={0.045} channel="beatLevel" />
 
       {/* crossfader */}
       <mesh position={[0, TOP + 0.0012, 0.135]} material={slot}>
@@ -118,6 +111,111 @@ export function Mixer({ position }: { position: [number, number, number] }) {
           <boxGeometry args={[0.0012, 0.001, 0.006]} />
         </mesh>
       ))}
+    </group>
+  )
+}
+
+// Fader travel along the slot (local z). Up = away from you = louder.
+const Z_LOUD = 0.011
+const Z_QUIET = 0.089
+const zOf = (v: number) => Z_QUIET - v * (Z_QUIET - Z_LOUD)
+const plane = new THREE.Plane()
+const hit = new THREE.Vector3()
+
+function LineFader({ x, channel }: { x: number; channel: Channel }) {
+  const level = useStore((s) => s.settings[channel])
+  const capRef = useRef<THREE.Mesh>(null)
+  const group = useRef<THREE.Group>(null)
+  const [hot, setHot] = useState(false)
+  const [held, setHeld] = useState(false)
+  const [recent, setRecent] = useState(false)
+
+  // keep the label up for a moment after a scroll adjustment
+  useEffect(() => {
+    if (!hover.lastAdjust[channel]) return
+    setRecent(true)
+    const id = setTimeout(() => setRecent(false), 900)
+    return () => clearTimeout(id)
+  }, [level, channel])
+
+  useFrame((_, dt) => {
+    if (capRef.current) capRef.current.position.z = THREE.MathUtils.damp(capRef.current.position.z, zOf(level), 30, dt)
+  })
+
+  const setFromRay = (e: ThreeEvent<PointerEvent>) => {
+    const g = group.current
+    if (!g) return
+    const top = new THREE.Vector3(0, TOP, 0)
+    g.localToWorld(top)
+    plane.set(new THREE.Vector3(0, 1, 0), -top.y)
+    if (!e.ray.intersectPlane(plane, hit)) return
+    g.worldToLocal(hit)
+    setLevel(channel, (Z_QUIET - hit.z) / (Z_QUIET - Z_LOUD))
+  }
+
+  const end = (e: ThreeEvent<PointerEvent>) => {
+    if (hover.held !== channel) return
+    ;(e.target as Element).releasePointerCapture?.(e.pointerId)
+    hover.held = null
+    setHeld(false)
+    if (!hot) document.body.style.cursor = ''
+  }
+
+  const capMat = hot || held ? flat('#FFFFFF', { rough: 0.5, emissive: P.offwhite, ei: 0.35 }) : flat(P.offwhite, { rough: 0.6 })
+
+  return (
+    <group ref={group}>
+      <mesh position={[x, TOP + 0.0012, 0.05]} material={flat('#1c1b19')}>
+        <boxGeometry args={[0.005, 0.002, 0.09]} />
+      </mesh>
+      {/* scale ticks */}
+      {Array.from({ length: 6 }, (_, i) => (
+        <mesh key={i} position={[x + 0.013, TOP + 0.0008, Z_LOUD + (i * (Z_QUIET - Z_LOUD)) / 5]} material={flat(P.metal)}>
+          <boxGeometry args={[0.005, 0.001, 0.0012]} />
+        </mesh>
+      ))}
+      <mesh ref={capRef} position={[x, TOP + 0.007, zOf(level)]} castShadow material={capMat}>
+        <boxGeometry args={[0.02, 0.012, 0.012]} />
+      </mesh>
+      {/* generous invisible hit area over the whole slot */}
+      <mesh
+        position={[x, TOP + 0.01, 0.05]}
+        onPointerOver={(e) => {
+          e.stopPropagation()
+          hover.over = channel
+          setHot(true)
+          document.body.style.cursor = 'ns-resize'
+        }}
+        onPointerOut={() => {
+          if (hover.over === channel) hover.over = null
+          setHot(false)
+          if (hover.held !== channel) document.body.style.cursor = ''
+        }}
+        onPointerDown={(e) => {
+          if (e.button !== 0) return
+          e.stopPropagation()
+          ;(e.target as Element).setPointerCapture?.(e.pointerId)
+          hover.held = channel
+          setHeld(true)
+          setFromRay(e)
+        }}
+        onPointerMove={(e) => {
+          if (hover.held === channel) setFromRay(e)
+        }}
+        onPointerUp={end}
+        onPointerCancel={end}
+      >
+        <boxGeometry args={[0.04, 0.03, 0.11]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
+      {(hot || held || recent) && (
+        <Html position={[x, TOP + 0.03, zOf(level) - 0.02]} center zIndexRange={[5, 0]} style={{ pointerEvents: 'none' }}>
+          <div className="fader-tip">
+            <span className="label">{CHANNEL_LABEL[channel]}</span>
+            <span className="mono">{Math.round(level * 100)}%</span>
+          </div>
+        </Html>
+      )}
     </group>
   )
 }

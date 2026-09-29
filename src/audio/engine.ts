@@ -53,6 +53,8 @@ class Engine {
   private recStopResolve: (() => void) | null = null
   started = false
   ready = false
+  private wantSample = ''
+  private wantBeat = ''
 
   private initP: Promise<void> | null = null
   private progressCb: (p: number, label: string) => void = () => {}
@@ -127,6 +129,9 @@ class Engine {
     this.publishCrate()
 
     const s = getSettings()
+    // your crate loads after this; remember what you had picked so we can restore it
+    this.wantSample = s.sampleId
+    this.wantBeat = s.beatId
     this.applyLevels()
     this.applyMotor()
     this.selectSample(this.samples.has(s.sampleId) ? s.sampleId : 'ahh')
@@ -242,6 +247,15 @@ class Engine {
     }
     this.publishCrate()
     useStore.getState().set({ crateLoaded: true })
+    if (this.wantSample !== this.sampleId && this.samples.get(this.wantSample)?.buf) this.selectSample(this.wantSample)
+    if (this.wantBeat !== this.beatId && this.beats.get(this.wantBeat)?.buf) {
+      if (this.started) this.selectBeat(this.wantBeat)
+      else {
+        this.beatId = this.wantBeat
+        this.bpm = this.beats.get(this.wantBeat)!.meta.bpm
+        useStore.getState().setSettings({ beatId: this.wantBeat })
+      }
+    }
   }
 
   /** Must be called from a user gesture. */

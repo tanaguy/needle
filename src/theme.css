@@ -240,3 +240,19 @@ input[type='range']:focus-visible::-webkit-slider-thumb {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ── In-scene fader label ─────────────────────────── */
+.fader-tip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 5px 10px;
+  white-space: nowrap;
+  background: rgba(243, 238, 227, 0.92);
+  border: 1px solid var(--hair);
+  border-radius: 999px;
+  transform: translateY(-14px);
+}
+.fader-tip .mono {
+  color: var(--ink);
+}

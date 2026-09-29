@@ -84,6 +84,12 @@ function HelpCard() {
         </div>
       ))}
       <div className="help-row">
+        <span className="body">Mixer faders</span>
+        <span className="body" style={{ color: 'var(--ink)' }}>
+          Hover + scroll, or drag — left: scratch, right: beat
+        </span>
+      </div>
+      <div className="help-row">
         <span className="chip">1–4</span>
         <span className="body">Change beat</span>
       </div>

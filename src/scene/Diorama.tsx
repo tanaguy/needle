@@ -7,6 +7,7 @@ import { useStore } from '../store'
 import { P } from '../palette'
 import { flat } from './materials'
 import { woodMaterial } from './wood'
+import { OjasSpeaker } from './Speaker'
 import { Mixer } from './Mixer'
 import { Prop } from './Props'
 import { Turntable } from './Turntable'
@@ -192,22 +193,6 @@ function useBeatPulse() {
   }
 }
 
-function Speaker({ position, rotation }: { position: [number, number, number]; rotation: number }) {
-  const g = useRef<THREE.Group>(null)
-  const pulse = useBeatPulse()
-  useFrame(() => {
-    if (!g.current) return
-    const { kick } = pulse()
-    const s = 1 + kick * 0.022
-    g.current.scale.set(s, 1 + kick * 0.01, s)
-  })
-  return (
-    <group ref={g} position={position}>
-      <Prop name="speaker" rotation={rotation} tint={{ wood: P.charcoalHi, metalMedium: P.charcoal }} />
-    </group>
-  )
-}
-
 function Lamp({ position }: { position: [number, number, number] }) {
   const light = useRef<THREE.PointLight>(null)
   const pulse = useBeatPulse()
@@ -266,8 +251,9 @@ export function Diorama() {
       <Headphones position={[0.52, TABLE_Y, -0.265]} rotation={0.08} />
       <Cable />
 
-      <Speaker position={[-1.02, 0, -0.42]} rotation={0} />
-      <Speaker position={[1.02, 0, -0.42]} rotation={0} />
+      {/* OJAS-style horn speakers, toed in toward the DJ */}
+      <OjasSpeaker position={[-1.05, 0, -0.42]} rotation={0.22} />
+      <OjasSpeaker position={[1.05, 0, -0.42]} rotation={-0.22} />
 
       <Crate position={[-1.35, 0, 0.55]} rotation={0.25} seed={5} />
       <Crate position={[-0.95, 0, 1.05]} rotation={-0.35} seed={9} />

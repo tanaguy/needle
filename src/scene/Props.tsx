@@ -5,7 +5,6 @@ import { flat, KENNEY_REMAP } from './materials'
 import { P } from '../palette'
 
 export const PROP_URLS = [
-  'speaker',
   'pottedPlant',
   'plantSmall1',
   'plantSmall2',

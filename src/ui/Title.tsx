@@ -23,7 +23,6 @@ export function Title() {
   return (
     <motion.section className="title" initial="hidden" animate="show" exit="exit" variants={{ show: { transition: { staggerChildren: 0.08, delayChildren: 0.3 } } }}>
       <motion.header className="title-top" variants={rise}>
-        <span className="label">Needle — Scratch Studio</span>
         <span className="label">Vol. 01 · Free Session</span>
       </motion.header>
 
@@ -58,13 +57,13 @@ export function Title() {
         <span className="label">
           <HeadphonesIcon /> Headphones recommended
         </span>
-        <span className="label">Made for the MacBook trackpad</span>
       </motion.footer>
 
       <style>{`
         .title { position: fixed; inset: 0; display: grid; grid-template-rows: auto 1fr auto; padding: var(--gutter) calc(var(--gutter) + 8px); pointer-events: none; }
         .title > * { pointer-events: auto; }
         .title-top, .title-foot { display: flex; justify-content: space-between; align-items: center; }
+        .title-top { justify-content: flex-end; }
         .title-main { align-self: end; padding-bottom: 7vh; max-width: 620px; }
         .title-mark { margin: 0; font-size: clamp(96px, 13vw, 184px); line-height: 0.86; letter-spacing: -0.03em; color: var(--ink); }
         .title-sub { margin: 22px 0 30px; font-size: 23px; line-height: 1.32; color: var(--ink-2); }

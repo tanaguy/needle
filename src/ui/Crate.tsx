@@ -10,7 +10,6 @@ export function Crate() {
   const samples = useStore((s) => s.samples)
   const beatId = useStore((s) => s.settings.beatId)
   const sampleId = useStore((s) => s.settings.sampleId)
-  const crateLoaded = useStore((s) => s.crateLoaded)
   const set = useStore((s) => s.set)
   const close = () => set({ panel: null })
 
@@ -18,8 +17,6 @@ export function Crate() {
 
   const builtinBeats = beats.filter((b) => b.source === 'builtin')
   const builtinSamples = samples.filter((s) => s.source === 'builtin')
-  const userBeats = beats.filter((b) => b.source === 'user')
-  const userSamples = samples.filter((s) => s.source === 'user')
   const playableBeats = beats.filter((b) => b.playable)
 
   return (
@@ -40,26 +37,6 @@ export function Crate() {
           {builtinSamples.map((s) => (
             <SampleRow key={s.id} s={s} active={s.id === sampleId} />
           ))}
-        </Section>
-        <Section title="Your crate">
-          {userBeats.map((b) => (
-            <BeatRow key={b.id} b={b} n={playableBeats.indexOf(b) + 1} active={b.id === beatId} />
-          ))}
-          {userSamples.map((s) => (
-            <SampleRow key={s.id} s={s} active={s.id === sampleId} />
-          ))}
-          {crateLoaded && !userBeats.length && !userSamples.length && (
-            <div className="empty">
-              <p className="serif" style={{ fontSize: 20, margin: 0 }}>
-                Nothing here yet.
-              </p>
-              <p className="body" style={{ margin: 0 }}>
-                Add your own loops and samples: drop audio files into <code className="mono">public/audio/user/</code> and list them in{' '}
-                <code className="mono">manifest.json</code>. Freesound (CC0 filter), Looperman and Sample Focus are good places to dig.
-              </p>
-            </div>
-          )}
-          {!crateLoaded && <p className="label">Looking for your files…</p>}
         </Section>
       </div>
       <SheetStyles />

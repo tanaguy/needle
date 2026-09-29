@@ -1,6 +1,6 @@
 import workletUrl from './scratch-worklet.ts?worker&url'
 import { BEATS, renderBeat } from './synth-beats'
-import { SAMPLES, renderSample } from './synth-samples'
+import { SAMPLES, renderSample, type SampleDef } from './synth-samples'
 import { useStore, getSettings, type BeatMeta, type SampleMeta, type Take } from '../store'
 
 /** One full platter turn at 33⅓ rpm, in seconds of audio. */
@@ -53,8 +53,6 @@ class Engine {
   private recStopResolve: (() => void) | null = null
   started = false
   ready = false
-  private wantSample = ''
-  private wantBeat = ''
 
   private initP: Promise<void> | null = null
   private progressCb: (p: number, label: string) => void = () => {}
@@ -119,7 +117,7 @@ class Engine {
       progress(0.1 + (0.6 * ++done) / total, 'Cutting the beats')
     }
     for (const def of SAMPLES) {
-      const buf = await renderSample(def, sr)
+      const buf = (await this.loadRecording(def)) ?? (await renderSample(def, sr))
       this.samples.set(def.id, {
         buf,
         meta: { id: def.id, name: def.name, note: def.note, duration: buf.duration, source: 'builtin', playable: true },
@@ -129,9 +127,6 @@ class Engine {
     this.publishCrate()
 
     const s = getSettings()
-    // your crate loads after this; remember what you had picked so we can restore it
-    this.wantSample = s.sampleId
-    this.wantBeat = s.beatId
     this.applyLevels()
     this.applyMotor()
     this.selectSample(this.samples.has(s.sampleId) ? s.sampleId : 'ahh')
@@ -149,8 +144,29 @@ class Engine {
     })
 
     this.ready = true
-    // user crate loads in the background; failures only mark items
-    this.loadUserCrate()
+  }
+
+  private recordings = new Map<string, Promise<AudioBuffer | null>>()
+
+  /** Decode (once per file) and cut a real recording for a sample; null if unavailable. */
+  private async loadRecording(def: SampleDef): Promise<AudioBuffer | null> {
+    const f = def.file
+    if (!f || !this.ctx) return null
+    const ctx = this.ctx
+    if (!this.recordings.has(f.url)) {
+      this.recordings.set(
+        f.url,
+        fetch(f.url)
+          .then((r) => {
+            // dev servers answer missing files with index.html
+            if (!r.ok || (r.headers.get('content-type') ?? '').includes('text/html')) return null
+            return r.arrayBuffer().then((b) => ctx.decodeAudioData(b))
+          })
+          .catch(() => null),
+      )
+    }
+    const buf = await this.recordings.get(f.url)!
+    return buf ? cut(ctx, buf, f.start, f.end) : null
   }
 
   private publishCrate() {
@@ -158,104 +174,6 @@ class Engine {
       beats: [...this.beats.values()].map((b) => b.meta),
       samples: [...this.samples.values()].map((s) => s.meta),
     })
-  }
-
-  async loadUserCrate() {
-    const ctx = this.ctx!
-    type Entry = { file: string; name?: string; bpm?: number; bars?: number; start?: number; end?: number }
-    let manifest: { beats?: Entry[]; samples?: Entry[] }
-    try {
-      const res = await fetch('/audio/user/manifest.json', { cache: 'no-store' })
-      if (!res.ok) throw new Error(String(res.status))
-      manifest = await res.json()
-    } catch {
-      useStore.getState().set({ crateLoaded: true })
-      return
-    }
-    const decode = async (file: string) => {
-      const res = await fetch(`/audio/user/${encodeURIComponent(file)}`)
-      // dev servers answer missing files with index.html, so check the type too
-      if (!res.ok || (res.headers.get('content-type') ?? '').includes('text/html')) throw new Error('File not found in public/audio/user')
-      return ctx.decodeAudioData(await res.arrayBuffer())
-    }
-    for (const e of manifest.beats ?? []) {
-      const id = `user-beat:${e.file}`
-      const meta: BeatMeta = {
-        id,
-        name: e.name ?? e.file,
-        bpm: e.bpm ?? 90,
-        style: 'Your crate',
-        bars: e.bars ?? 0,
-        source: 'user',
-        playable: false,
-      }
-      try {
-        const buf = await decode(e.file)
-        if (!e.bpm) meta.error = 'No bpm in manifest — grid assumes 90'
-        meta.bars = e.bars ?? Math.max(1, Math.round((buf.duration * meta.bpm) / 60 / 4))
-        meta.playable = true
-        this.beats.set(id, { meta, buf })
-      } catch (err) {
-        meta.error = err instanceof Error && err.message.startsWith('File') ? err.message : 'Could not decode this file'
-        this.beats.set(id, { meta, buf: null })
-      }
-    }
-    // several samples can come from one file, cut with start/end (seconds)
-    const trim = (buf: AudioBuffer, start = 0, end = buf.duration) => {
-      let a = Math.max(0, Math.floor(start * buf.sampleRate))
-      const b = Math.min(buf.length, Math.ceil(end * buf.sampleRate))
-      // Snap the start to the actual attack, so the cue sticker sits right on the sound.
-      // (Browsers disagree about MP3 encoder padding — Chrome keeps ~25 ms of it.)
-      const ch0 = buf.getChannelData(0)
-      let peak = 0
-      for (let i = a; i < b; i++) peak = Math.max(peak, Math.abs(ch0[i]))
-      const floor = Math.max(0.01, peak * 0.08)
-      let on = a
-      while (on < b && Math.abs(ch0[on]) < floor) on++
-      if (on < b) a = Math.max(a, on - Math.floor(0.002 * buf.sampleRate))
-      if (a === 0 && b === buf.length) return buf
-      const out = ctx.createBuffer(buf.numberOfChannels, Math.max(1, b - a), buf.sampleRate)
-      const fade = Math.min(64, Math.floor((b - a) / 4)) // tiny fades so cut points don't click
-      for (let c = 0; c < buf.numberOfChannels; c++) {
-        const d = out.getChannelData(c)
-        d.set(buf.getChannelData(c).subarray(a, b))
-        for (let i = 0; i < fade; i++) {
-          d[i] *= i / fade
-          d[d.length - 1 - i] *= i / fade
-        }
-      }
-      return out
-    }
-    const cache = new Map<string, Promise<AudioBuffer>>()
-    const decodeOnce = (file: string) => {
-      if (!cache.has(file)) cache.set(file, decode(file))
-      return cache.get(file)!
-    }
-    for (const e of manifest.samples ?? []) {
-      const id = `user-sample:${e.file}@${e.start ?? 0}-${e.end ?? 'end'}`
-      const meta: SampleMeta = { id, name: e.name ?? e.file, note: 'Your crate', duration: 0, source: 'user', playable: false }
-      try {
-        const buf = trim(await decodeOnce(e.file), e.start, e.end)
-        meta.duration = buf.duration
-        meta.playable = true
-        if (buf.duration > 6) meta.error = 'Longer than 6 s — trimmed'
-        this.samples.set(id, { meta, buf })
-      } catch (err) {
-        meta.error = err instanceof Error && err.message.startsWith('File') ? err.message : 'Could not decode this file'
-        this.samples.set(id, { meta, buf: null })
-      }
-    }
-    this.publishCrate()
-    useStore.getState().set({ crateLoaded: true })
-    if (this.wantSample !== this.sampleId && this.samples.get(this.wantSample)?.buf) this.selectSample(this.wantSample)
-    if (this.wantBeat !== this.beatId && this.beats.get(this.wantBeat)?.buf) {
-      if (this.started) this.selectBeat(this.wantBeat)
-      else {
-        this.beatId = this.wantBeat
-        this.bpm = this.beats.get(this.wantBeat)!.meta.bpm
-        useStore.getState().setSettings({ beatId: this.wantBeat })
-      }
-    }
   }
 
   /** Must be called from a user gesture. */
@@ -482,3 +400,31 @@ class Engine {
 export const engine = new Engine()
 if (import.meta.env.DEV) (window as unknown as { engine: Engine; deck: typeof deck }).engine = engine
 if (import.meta.env.DEV) (window as unknown as { deck: typeof deck }).deck = deck
+
+/**
+ * Cut [start, end] out of a recording as mono, snapping the start to the actual attack
+ * so the cue sticker sits right on the sound (browsers disagree about MP3 padding),
+ * with tiny fades so the cut points don't click.
+ */
+function cut(ctx: BaseAudioContext, buf: AudioBuffer, start: number, end: number): AudioBuffer {
+  const sr = buf.sampleRate
+  let a = Math.max(0, Math.floor(start * sr))
+  const b = Math.min(buf.length, Math.ceil(end * sr))
+  const chans = Array.from({ length: buf.numberOfChannels }, (_, c) => buf.getChannelData(c))
+  const mono = (i: number) => chans.reduce((acc, d) => acc + d[i], 0) / chans.length
+  let peak = 0
+  for (let i = a; i < b; i++) peak = Math.max(peak, Math.abs(mono(i)))
+  const floor = Math.max(0.01, peak * 0.08)
+  let on = a
+  while (on < b && Math.abs(mono(on)) < floor) on++
+  if (on < b) a = Math.max(a, on - Math.floor(0.002 * sr))
+  const out = ctx.createBuffer(1, Math.max(1, b - a), sr)
+  const d = out.getChannelData(0)
+  for (let i = 0; i < d.length; i++) d[i] = mono(a + i)
+  const fade = Math.min(64, Math.floor(d.length / 4))
+  for (let i = 0; i < fade; i++) {
+    d[i] *= i / fade
+    d[d.length - 1 - i] *= i / fade
+  }
+  return out
+}

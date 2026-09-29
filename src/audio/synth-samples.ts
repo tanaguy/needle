@@ -6,7 +6,13 @@ export type SampleDef = {
   note: string
   dur: number
   render: (ctx: Ctx, out: AudioNode) => void
+  /** Real recording to use when available; the synth render is the fallback. */
+  file?: { url: string; start: number; end: number }
 }
+
+// The classic battle-record "Ahh" / "Fresh" (Fab 5 Freddy — Change the Beat).
+// Kept out of git; if it's missing, the synthesized voices stand in.
+const CLASSIC = '/audio/classic/ahh-fresh.mp3'
 
 type Formant = [freq: number, q: number, gain: number]
 
@@ -116,6 +122,7 @@ export const SAMPLES: SampleDef[] = [
     name: 'Ahh',
     note: 'The classic long vowel — best for baby & tear scratches',
     dur: 0.78,
+    file: { url: CLASSIC, start: 1.795, end: 2.83 },
     render(ctx, out) {
       voice(ctx, out, 0, 0.76, [370, 300], AH, { attack: 0.018, release: 0.22 })
       voice(ctx, out, 0.012, 0.76, [370, 300], AH, { attack: 0.03, release: 0.22, detune: 9, breath: 0.03 })
@@ -126,6 +133,7 @@ export const SAMPLES: SampleDef[] = [
     name: 'Fresh',
     note: 'Two-part word — try chirps across the “fr” and “esh”',
     dur: 0.62,
+    file: { url: CLASSIC, start: 2.85, end: 3.585 },
     render(ctx, out) {
       fricative(ctx, out, 0, 0.1, 900, 3200, 0.5)
       voice(ctx, out, 0.07, 0.38, [320, 285], [
@@ -134,6 +142,21 @@ export const SAMPLES: SampleDef[] = [
         [2900, 12, 0.28],
       ], { attack: 0.03, release: 0.06 })
       fricative(ctx, out, 0.33, 0.62, 2200, 7500, 0.9)
+    },
+  },
+  {
+    id: 'ahh-fresh',
+    name: 'Ahh → Fresh',
+    note: 'The full phrase — for combos and flares across both words',
+    dur: 1.42,
+    file: { url: CLASSIC, start: 1.795, end: 3.585 },
+    render(ctx, out) {
+      // fallback: the two synth words back to back
+      SAMPLES[0].render(ctx, out)
+      const d = ctx.createDelay(1)
+      d.delayTime.value = 0.8
+      d.connect(out)
+      SAMPLES[1].render(ctx, d)
     },
   },
   {

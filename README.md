@@ -37,9 +37,9 @@ The strip at the bottom is live scratch notation:
 
 Add `?desktop` to the URL to skip the "made for a laptop" screen on narrow windows.
 
-## Your own sounds
+## Samples
 
-Drop files into `public/audio/user/` and list them in `manifest.json` (see the README in that folder).
+"Ahh", "Fresh" and "Ahh → Fresh" are cut from `public/audio/classic/ahh-fresh.mp3`, the classic battle-record sample from [Studio Scratches](https://studioscratches.com/classic-ahhh-and-fresh-samples-download/). It's copyrighted, so it's git-ignored. Without it, the app falls back to synthesized voices.
 
 ## How it works
 

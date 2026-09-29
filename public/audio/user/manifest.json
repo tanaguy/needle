@@ -1,8 +1,0 @@
-{
-  "beats": [],
-  "samples": [
-    { "file": "ahh-fresh.mp3", "name": "Ahh (classic)", "start": 1.795, "end": 2.83 },
-    { "file": "ahh-fresh.mp3", "name": "Fresh (classic)", "start": 2.85, "end": 3.585 },
-    { "file": "ahh-fresh.mp3", "name": "Ahh → Fresh", "start": 1.795, "end": 3.585 }
-  ]
-}

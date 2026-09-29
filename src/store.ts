@@ -57,7 +57,6 @@ type State = {
   settings: Settings
   beats: BeatMeta[]
   samples: SampleMeta[]
-  crateLoaded: boolean
   faderOpen: boolean
   hamster: boolean
   motorOn: boolean
@@ -104,7 +103,16 @@ function loadSettings(): Settings {
       bindings.camera = 'KeyR'
       bindings.record = DEFAULT_BINDINGS.record
     }
-    return { ...DEFAULT_SETTINGS, ...parsed, bindings }
+    // the old "Your crate" cuts are now the built-in samples
+    const sampleId = parsed.sampleId?.startsWith('user-sample:')
+      ? parsed.sampleId.includes('2.85')
+        ? 'fresh'
+        : parsed.sampleId.includes('3.585')
+          ? 'ahh-fresh'
+          : 'ahh'
+      : parsed.sampleId
+    const beatId = parsed.beatId?.startsWith('user-beat:') ? DEFAULT_SETTINGS.beatId : parsed.beatId
+    return { ...DEFAULT_SETTINGS, ...parsed, sampleId: sampleId ?? DEFAULT_SETTINGS.sampleId, beatId: beatId ?? DEFAULT_SETTINGS.beatId, bindings }
   } catch {
     return DEFAULT_SETTINGS
   }
@@ -127,7 +135,6 @@ export const useStore = create<State>((set, get) => ({
   settings: loadSettings(),
   beats: [],
   samples: [],
-  crateLoaded: false,
   faderOpen: false,
   hamster: false,
   motorOn: true,

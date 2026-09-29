@@ -52,8 +52,8 @@ const deckLook = new THREE.Vector3(SCRATCH_POS[0] + 0.17, SCRATCH_POS[1] + 0.02,
 const SHOTS: Record<'deck' | 'room' | 'onboard', Shot> = {
   deck: { look: deckLook, pos: deckLook.clone().add(new THREE.Vector3(0.0, 1.62, 1.28)) },
   onboard: {
-    look: deckLook.clone().add(new THREE.Vector3(-0.36, 0, 0)),
-    pos: deckLook.clone().add(new THREE.Vector3(-0.36 + 0.1, 1.95, 1.5)),
+    look: new THREE.Vector3(SCRATCH_POS[0] - 0.03, SCRATCH_POS[1] + 0.1, SCRATCH_POS[2] + 0.02),
+    pos: new THREE.Vector3(SCRATCH_POS[0] + 0.02, SCRATCH_POS[1] + 1.55, SCRATCH_POS[2] + 1.15),
   },
   room: { look: new THREE.Vector3(0, 0.05, 0.35), pos: new THREE.Vector3(5.6, 7.1, 9.2) },
 }
@@ -64,6 +64,7 @@ function CameraRig() {
   const tmp = useRef(new THREE.Vector3())
   const tmpLook = useRef(new THREE.Vector3())
   const first = useRef(true)
+  const shift = useRef(0)
 
   useFrame((state, dt) => {
     const s = useStore.getState()
@@ -75,6 +76,7 @@ function CameraRig() {
 
     const aspect = state.size.width / state.size.height
     let fov = 20
+    let shiftPx = 0
     if (s.phase === 'loading' || s.phase === 'title') {
       // slow orbit around the diorama, framed to the right of the title text
       const a = 0.56 + (reduce ? 0 : Math.sin(t * 0.05) * 0.22)
@@ -89,8 +91,14 @@ function CameraRig() {
       targetLook.copy(shot.look)
       // keep the same slice of the world in frame whatever the window shape
       const d = shot.pos.distanceTo(shot.look)
-      const wantW = s.settings.camera === 'room' && s.phase === 'session' ? 6.4 : s.phase === 'onboarding' ? 1.5 : 1.12
-      fov = THREE.MathUtils.clamp(THREE.MathUtils.radToDeg(2 * Math.atan(wantW / (2 * d * aspect))), 16, 38)
+      let wantW = s.settings.camera === 'room' && s.phase === 'session' ? 6.4 : 1.12
+      if (s.phase === 'onboarding') {
+        // the setup card covers the left ~440px: frame the deck in what's left
+        const free = Math.max(0.35, (state.size.width - 440) / state.size.width)
+        wantW = 0.62 / free
+        shiftPx = (state.size.width - state.size.width * free) / 2
+      }
+      fov = THREE.MathUtils.clamp(THREE.MathUtils.radToDeg(2 * Math.atan(wantW / (2 * d * aspect))), 14, 40)
       // gentle parallax when idle
       const idle = performance.now() - lastPlatterInput() > 1500 && s.settings.gesture === 'swipe'
       if (!reduce && idle && !s.panel) {
@@ -109,10 +117,12 @@ function CameraRig() {
     look.current.y = THREE.MathUtils.damp(look.current.y, targetLook.y, lam, dt)
     look.current.z = THREE.MathUtils.damp(look.current.z, targetLook.z, lam, dt)
     cam.lookAt(look.current)
-    if (Math.abs(cam.fov - fov) > 0.01) {
-      cam.fov = THREE.MathUtils.damp(cam.fov, fov, lam, dt)
-      cam.updateProjectionMatrix()
-    }
+    shift.current = THREE.MathUtils.damp(shift.current, shiftPx, lam, dt)
+    const { width: w, height: h } = state.size
+    if (Math.abs(shift.current) > 0.5) cam.setViewOffset(w, h, -shift.current, 0, w, h)
+    else if (cam.view?.enabled) cam.clearViewOffset()
+    if (Math.abs(cam.fov - fov) > 0.01) cam.fov = THREE.MathUtils.damp(cam.fov, fov, lam, dt)
+    cam.updateProjectionMatrix()
   })
   return null
 }

@@ -15,6 +15,7 @@ import { Crate } from './ui/Crate'
 import { Settings } from './ui/Settings'
 import { TakeReview } from './ui/TakeReview'
 import { Notice, useNarrowScreen } from './ui/Notice'
+import { ErrorBoundary } from './ui/ErrorBoundary'
 
 export default function App() {
   const phase = useStore((s) => s.phase)
@@ -69,6 +70,7 @@ export default function App() {
       <div ref={stageRef} className={`stage ${inPlay && gesture === 'drag' ? 'is-drag' : ''}`}>
         <Stage />
       </div>
+      <ErrorBoundary>
       <div className="overlay">
         <AnimatePresence>
           {phase === 'loading' && <Loading key="loading" modelProgress={models.progress / 100} />}
@@ -77,10 +79,11 @@ export default function App() {
           {phase === 'session' && <HUD key="hud" />}
           {phase === 'session' && panel === 'crate' && <Crate key="crate" />}
           {panel === 'settings' && <Settings key="settings" />}
-          {take && <TakeReview key="take" />}
+          {take && <TakeReview key="take" take={take} />}
         </AnimatePresence>
         <Notice narrow={narrow && phase !== 'loading'} />
       </div>
+      </ErrorBoundary>
       <div className="sr-only" aria-live="polite">
         {announce}
       </div>

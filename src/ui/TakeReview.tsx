@@ -2,14 +2,14 @@ import { motion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import { engine } from '../audio/engine'
 import { encodeWav, peaks } from '../audio/wav'
-import { useStore } from '../store'
+import { useStore, type Take } from '../store'
 import { UI } from '../palette'
 import { EASE } from './motion'
 
 let takeNo = 0
 
-export function TakeReview() {
-  const take = useStore((s) => s.take)!
+// take arrives as a prop so the exit animation keeps its data after the store clears it
+export function TakeReview({ take }: { take: Take }) {
   const set = useStore((s) => s.set)
   const [n] = useState(() => ++takeNo)
   const [playing, setPlaying] = useState(false)

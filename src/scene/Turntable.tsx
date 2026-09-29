@@ -202,7 +202,7 @@ export function Turntable({ kind, position }: Props) {
       const t = engine.ctx && engine.started ? engine.ctx.currentTime : state.clock.elapsedTime * 0.25
       turns = t / TURN
     } else if (engine.started) {
-      turns = engine.platterNow() / TURN
+      turns = (engine.platterNow() - deck.lead) / TURN
     } else {
       turns = state.clock.elapsedTime * 0.08 // idle title spin
     }

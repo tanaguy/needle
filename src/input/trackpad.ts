@@ -44,7 +44,7 @@ export function attachTrackpad(surface: HTMLElement) {
   let dragging = -1
   const onDown = (e: PointerEvent) => {
     if (!active() || getSettings().gesture !== 'drag' || e.button !== 0) return
-    if (e.target !== surface) return
+    if (!(e.target instanceof Node) || !surface.contains(e.target)) return
     dragging = e.pointerId
     surface.setPointerCapture(e.pointerId)
     surface.classList.add('is-holding')

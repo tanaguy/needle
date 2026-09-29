@@ -25,6 +25,7 @@ const TAU_FOLLOW = 0.014 // s — how tightly the platter follows the hand
 const FF_HOLD = 0.02 // s — keep feed-forward velocity this long after the last move
 const FF_FADE = 0.016 // s — then fade it out over this long
 const REPORT_EVERY = 256 // frames
+const TURN_S = 1.8 // one platter turn at 33⅓ rpm, in seconds
 
 class ScratchProcessor extends AudioWorkletProcessor {
   buf: Float32Array = new Float32Array(0)
@@ -62,7 +63,8 @@ class ScratchProcessor extends AudioWorkletProcessor {
         this.buf = m.data
         this.lead = m.lead
         const dur = m.data.length / sampleRate
-        this.loopLen = Math.max(dur + this.lead + 0.35, 1.2)
+        // whole turns per loop, so the cue sticker always sits at 12 o'clock on the cue
+        this.loopLen = Math.max(1, Math.ceil((dur + this.lead + 0.35) / TURN_S)) * TURN_S
         // snap to the cue of the current loop so a sample swap lands on the sticker
         const base = Math.floor(this.pos / this.loopLen) * this.loopLen + this.lead
         this.pos = base

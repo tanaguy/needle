@@ -6,6 +6,7 @@ import { keyLabel, ACTION_LABEL, type Action } from '../input/bindings'
 import { useStore } from '../store'
 import { fade, rise } from './motion'
 import { WaveStrip } from './WaveStrip'
+import { FEATURES } from '../config'
 
 export function BeatDots({ size = 7 }: { size?: number }) {
   const ref = useRef<HTMLDivElement>(null)
@@ -59,7 +60,9 @@ function Key({ a }: { a: Action }) {
 
 function HelpCard() {
   const gesture = useStore((s) => s.settings.gesture)
-  const rows: Action[] = ['fader', 'faderA', 'faderB', 'hamster', 'cue', 'motor', 'record', 'camera', 'crate', 'prevSample', 'nextSample']
+  const rows = (['fader', 'faderA', 'faderB', 'hamster', 'cue', 'camera', 'motor', 'record', 'crate', 'prevSample', 'nextSample'] as Action[]).filter(
+    (a) => a !== 'record' || FEATURES.recording,
+  )
   return (
     <motion.div className="paper help" variants={fade} initial="hidden" animate="show" exit="exit">
       <div className="help-head">
@@ -136,6 +139,7 @@ export function HUD() {
         <button className="btn btn-ghost" onClick={() => set({ panel: 'settings', help: false })}>
           Settings <span className="chip">Esc</span>
         </button>
+        {FEATURES.recording && (
         <button
           className={`btn btn-line rec ${recording ? 'is-rec' : ''}`}
           onClick={() => toggleRecord()}
@@ -147,6 +151,7 @@ export function HUD() {
           {recording ? <RecTimer since={recStartedAt} /> : 'Rec'}
           <Key a="record" />
         </button>
+        )}
       </motion.nav>
 
       <AnimatePresence>{help && <HelpCard key="help" />}</AnimatePresence>
@@ -163,6 +168,9 @@ export function HUD() {
               </span>
               <span>
                 <Key a="cue" /> back to cue
+              </span>
+              <span>
+                <Key a="camera" /> room view
               </span>
               <span>
                 <Key a="crate" /> crate

@@ -157,7 +157,7 @@ class Engine {
 
   async loadUserCrate() {
     const ctx = this.ctx!
-    type Entry = { file: string; name?: string; bpm?: number; bars?: number }
+    type Entry = { file: string; name?: string; bpm?: number; bars?: number; start?: number; end?: number }
     let manifest: { beats?: Entry[]; samples?: Entry[] }
     try {
       const res = await fetch('/audio/user/manifest.json', { cache: 'no-store' })
@@ -195,11 +195,33 @@ class Engine {
         this.beats.set(id, { meta, buf: null })
       }
     }
+    // several samples can come from one file, cut with start/end (seconds)
+    const trim = (buf: AudioBuffer, start = 0, end = buf.duration) => {
+      const a = Math.max(0, Math.floor(start * buf.sampleRate))
+      const b = Math.min(buf.length, Math.ceil(end * buf.sampleRate))
+      if (a === 0 && b === buf.length) return buf
+      const out = ctx.createBuffer(buf.numberOfChannels, Math.max(1, b - a), buf.sampleRate)
+      const fade = Math.min(64, Math.floor((b - a) / 4)) // tiny fades so cut points don't click
+      for (let c = 0; c < buf.numberOfChannels; c++) {
+        const d = out.getChannelData(c)
+        d.set(buf.getChannelData(c).subarray(a, b))
+        for (let i = 0; i < fade; i++) {
+          d[i] *= i / fade
+          d[d.length - 1 - i] *= i / fade
+        }
+      }
+      return out
+    }
+    const cache = new Map<string, Promise<AudioBuffer>>()
+    const decodeOnce = (file: string) => {
+      if (!cache.has(file)) cache.set(file, decode(file))
+      return cache.get(file)!
+    }
     for (const e of manifest.samples ?? []) {
-      const id = `user-sample:${e.file}`
+      const id = `user-sample:${e.file}${e.start != null ? `@${e.start}` : ''}`
       const meta: SampleMeta = { id, name: e.name ?? e.file, note: 'Your crate', duration: 0, source: 'user', playable: false }
       try {
-        const buf = await decode(e.file)
+        const buf = trim(await decodeOnce(e.file), e.start, e.end)
         meta.duration = buf.duration
         meta.playable = true
         if (buf.duration > 6) meta.error = 'Longer than 6 s — trimmed'

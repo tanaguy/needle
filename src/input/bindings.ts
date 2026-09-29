@@ -1,3 +1,5 @@
+import { FEATURES } from '../config'
+
 export type Action =
   | 'fader'
   | 'faderA'
@@ -21,8 +23,8 @@ export const DEFAULT_BINDINGS: Bindings = {
   hamster: 'ShiftLeft',
   cue: 'KeyQ',
   motor: 'KeyM',
-  record: 'KeyR',
-  camera: 'KeyC',
+  record: FEATURES.recording ? 'KeyC' : '',
+  camera: 'KeyR',
   crate: 'Tab',
   help: 'Slash',
   prevSample: 'BracketLeft',
@@ -44,7 +46,7 @@ export const ACTION_LABEL: Record<Action, string> = {
   nextSample: 'Next sample',
 }
 
-export const REBINDABLE: Action[] = [
+export const REBINDABLE: Action[] = ([
   'fader',
   'faderA',
   'faderB',
@@ -56,9 +58,10 @@ export const REBINDABLE: Action[] = [
   'crate',
   'prevSample',
   'nextSample',
-]
+] as Action[]).filter((a) => a !== 'record' || FEATURES.recording)
 
 export function keyLabel(code: string): string {
+  if (!code) return '—'
   if (code === 'Space') return 'Space'
   if (code.startsWith('Key')) return code.slice(3)
   if (code.startsWith('Digit')) return code.slice(5)

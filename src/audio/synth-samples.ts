@@ -102,11 +102,12 @@ function master(ctx: Ctx) {
   return hp
 }
 
+// a brighter, female-register "aah" — closer to the classic battle-record vowel
 const AH: Formant[] = [
-  [760, 7, 1],
-  [1180, 9, 0.55],
-  [2550, 12, 0.22],
-  [3500, 14, 0.1],
+  [920, 7, 1],
+  [1350, 9, 0.6],
+  [2850, 12, 0.3],
+  [3900, 14, 0.14],
 ]
 
 export const SAMPLES: SampleDef[] = [
@@ -116,8 +117,8 @@ export const SAMPLES: SampleDef[] = [
     note: 'The classic long vowel — best for baby & tear scratches',
     dur: 0.78,
     render(ctx, out) {
-      voice(ctx, out, 0, 0.76, [262, 212], AH, { attack: 0.018, release: 0.22 })
-      voice(ctx, out, 0.012, 0.76, [262, 212], AH, { attack: 0.03, release: 0.22, detune: 9, breath: 0.03 })
+      voice(ctx, out, 0, 0.76, [370, 300], AH, { attack: 0.018, release: 0.22 })
+      voice(ctx, out, 0.012, 0.76, [370, 300], AH, { attack: 0.03, release: 0.22, detune: 9, breath: 0.03 })
     },
   },
   {
@@ -127,10 +128,10 @@ export const SAMPLES: SampleDef[] = [
     dur: 0.62,
     render(ctx, out) {
       fricative(ctx, out, 0, 0.1, 900, 3200, 0.5)
-      voice(ctx, out, 0.07, 0.38, [218, 196], [
-        [540, 8, 1],
-        [1850, 11, 0.5],
-        [2500, 12, 0.25],
+      voice(ctx, out, 0.07, 0.38, [320, 285], [
+        [620, 8, 1],
+        [2150, 11, 0.55],
+        [2900, 12, 0.28],
       ], { attack: 0.03, release: 0.06 })
       fricative(ctx, out, 0.33, 0.62, 2200, 7500, 0.9)
     },
@@ -142,9 +143,9 @@ export const SAMPLES: SampleDef[] = [
     dur: 1.0,
     render(ctx, out) {
       const o = ctx.createOscillator()
-      o.frequency.value = 520
+      o.frequency.value = 740
       const o3 = ctx.createOscillator()
-      o3.frequency.value = 1560
+      o3.frequency.value = 2220
       const g3 = ctx.createGain()
       g3.gain.value = 0.12
       const g = ctx.createGain()
@@ -180,7 +181,7 @@ export const SAMPLES: SampleDef[] = [
       g.gain.linearRampToValueAtTime(0, 0.45)
       lp.connect(g)
       g.connect(out)
-      for (const m of [51, 55, 58, 62, 39]) {
+      for (const m of [58, 62, 65, 69, 46]) {
         for (const det of [-8, 7]) {
           const o = ctx.createOscillator()
           o.type = 'sawtooth'

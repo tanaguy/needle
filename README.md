@@ -21,11 +21,12 @@ npm run build
 | `1`–`4` | Change beat |
 | `[` `]` | Change sample |
 | `M` | Motor on/off |
-| `R` | Record a take and export it as .wav |
-| `C` | Switch between Deck and Room views |
+| `R` | Switch between Deck and Room views |
 | `Tab` | Crate |
 | `Esc` | Settings |
 | `?` | Show all keys |
+
+Recording (take review + WAV export) is built but switched off in `src/config.ts`.
 
 All keys except `1`–`4`, `Esc` and `?` can be rebound in Settings.
 

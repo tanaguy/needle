@@ -98,7 +98,13 @@ function loadSettings(): Settings {
     const raw = localStorage.getItem(KEY)
     if (!raw) return DEFAULT_SETTINGS
     const parsed = JSON.parse(raw) as Partial<Settings>
-    return { ...DEFAULT_SETTINGS, ...parsed, bindings: { ...DEFAULT_BINDINGS, ...(parsed.bindings ?? {}) } }
+    const bindings = { ...DEFAULT_BINDINGS, ...(parsed.bindings ?? {}) }
+    // v1 → v2: R used to record and C switched the camera; R is now the room view
+    if (bindings.record === 'KeyR' && bindings.camera === 'KeyC') {
+      bindings.camera = 'KeyR'
+      bindings.record = DEFAULT_BINDINGS.record
+    }
+    return { ...DEFAULT_SETTINGS, ...parsed, bindings }
   } catch {
     return DEFAULT_SETTINGS
   }

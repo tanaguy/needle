@@ -6,7 +6,10 @@ import * as THREE from 'three'
 import { useStore } from '../store'
 import { P } from '../palette'
 import { lastPlatterInput } from '../input/trackpad'
+import { RectAreaLightUniformsLib } from 'three/examples/jsm/lights/RectAreaLightUniformsLib.js'
 import { Diorama, SCRATCH_POS } from './Diorama'
+
+RectAreaLightUniformsLib.init()
 
 function Lighting() {
   const quality = useStore((s) => s.settings.quality)
@@ -20,7 +23,7 @@ function Lighting() {
   }, [quality])
   return (
     <>
-      <hemisphereLight args={[P.sky, P.ground, 1.25]} />
+      <hemisphereLight args={[P.sky, P.ground, 1.3]} />
       <ambientLight intensity={0.12} />
       {/* low warm sun → long soft shadows */}
       <directionalLight
@@ -40,6 +43,11 @@ function Lighting() {
         shadow-camera-near={1}
         shadow-camera-far={16}
       />
+      {/* indirect ceiling light: a big soft panel overhead, like light bounced off a white ceiling.
+          No shadows — it only lifts the dark gear and the corners the sun can't reach. */}
+      <rectAreaLight args={['#FFF3E2', 1.1, 5.5, 5.5]} position={[0, 3.6, 0.3]} rotation-x={-Math.PI / 2} />
+      {/* a second, smaller bounce right over the decks so the charcoal reads */}
+      <rectAreaLight args={['#FFF6EA', 0.55, 1.8, 1.0]} position={[0, 2.3, 0.35]} rotation-x={-Math.PI / 2} />
       {/* cool sky fill from the opposite side */}
       <directionalLight position={[4, 3, -3]} intensity={0.45} color="#CFE0F0" />
     </>
@@ -144,11 +152,11 @@ function PostFX() {
     <EffectComposer multisampling={0} enableNormalPass={false}>
       <N8AO enabled={high} aoRadius={0.45} distanceFalloff={0.6} intensity={2.4} color="#3b2f25" quality="medium" halfRes />
       <TiltShift2 blur={high && !reduce ? 0.11 : 0} taper={0.6} start={[0.5, 0.0]} end={[0.5, 1.0]} samples={high ? 10 : 4} />
-      <HueSaturation saturation={0.06} />
+      <HueSaturation saturation={0.0} />
       <BrightnessContrast brightness={0.01} contrast={0.05} />
       <ToneMapping mode={ToneMappingMode.NEUTRAL} />
       <Vignette offset={0.32} darkness={0.42} />
-      <Noise premultiply opacity={0.35} blendFunction={BlendFunction.SOFT_LIGHT} />
+      <Noise premultiply opacity={0.22} blendFunction={BlendFunction.SOFT_LIGHT} />
       <SMAA />
     </EffectComposer>
   )

@@ -16,4 +16,7 @@ then list them in `manifest.json`:
 
 - Beats should be seamless loops; `bpm` sets the beat grid.
 - Samples are placed on the record at the cue sticker.
+- One file can hold several samples — cut them with `start` / `end` in seconds:
+  `{ "file": "ahh-fresh.mp3", "name": "Ahh", "start": 0.0, "end": 0.9 }`
+- Files in this folder are git-ignored, so classic record samples stay on your machine.
 - Good sources: Freesound (filter by CC0), Looperman, Sample Focus, Pixabay.

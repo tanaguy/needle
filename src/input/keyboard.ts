@@ -2,6 +2,7 @@ import { engine } from '../audio/engine'
 import { useStore } from '../store'
 import { cycleSample, selectBeatIndex, toggleCamera, toggleMotor, toggleRecord } from '../actions'
 import type { Action } from './bindings'
+import { FEATURES } from '../config'
 
 const faderKeys = new Set<string>()
 let capture: ((code: string) => void) | null = null
@@ -28,7 +29,7 @@ function matches(binding: string, code: string) {
 
 function actionFor(code: string): Action | null {
   const b = useStore.getState().settings.bindings
-  for (const a of Object.keys(b) as Action[]) if (matches(b[a], code)) return a
+  for (const a of Object.keys(b) as Action[]) if (b[a] && matches(b[a], code)) return a
   return null
 }
 
@@ -98,7 +99,7 @@ export function attachKeyboard() {
         toggleMotor()
         break
       case 'record':
-        if (s.phase === 'session') toggleRecord()
+        if (s.phase === 'session' && FEATURES.recording) toggleRecord()
         break
       case 'camera':
         toggleCamera()

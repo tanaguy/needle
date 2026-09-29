@@ -16,6 +16,7 @@ export const MIXER_POS: [number, number, number] = [0, TABLE_Y, 0.02]
 export const BEAT_POS: [number, number, number] = [0.4, TABLE_Y, 0.02]
 
 const R = 2.7 // platform radius
+const RUG_TOP = 0.001 + 0.01 * 2 * 1.35 // Kenney rug: 1 cm tall × 2 (kit scale) × 1.35
 
 function Platform() {
   const mats = useMemo(() => [flat(P.sandSide), flat(P.sand), flat(P.sandSide)], [])
@@ -73,23 +74,33 @@ function rng(seed: number) {
   return () => ((s = (s * 16807) % 2147483647) / 2147483647)
 }
 
-/** A row of record sleeves standing on edge. */
-function Sleeves({ count, position, seed, lean = 0.12 }: { count: number; position: [number, number, number]; seed: number; lean?: number }) {
+/**
+ * A row of record sleeves leaning together like a real stack: every sleeve shares one
+ * lean angle and pivots on its bottom edge, so neighbours rest against each other
+ * instead of cutting through one another.
+ */
+function Sleeves({ count, position, seed, lean = 0.1 }: { count: number; position: [number, number, number]; seed: number; lean?: number }) {
+  const T = 0.011 // sleeve thickness
+  const GAP = 0.0012
   const items = useMemo(() => {
     const r = rng(seed)
+    const pitch = (T + GAP) / Math.cos(lean) // spacing that keeps parallel boards apart
     return Array.from({ length: count }, (_, i) => ({
-      x: i * 0.018 - (count * 0.018) / 2,
+      x: i * pitch - ((count - 1) * pitch) / 2,
       c: SLEEVE_COLORS[Math.floor(r() * SLEEVE_COLORS.length)],
-      tilt: (r() - 0.5) * 0.08 + lean * (i === count - 1 ? 2.2 : 0.3),
-      h: 0.31 - r() * 0.01,
+      h: 0.31 - r() * 0.012,
     }))
   }, [count, seed, lean])
+  // lift so the lowest corner just touches the surface
+  const lift = (T / 2) * Math.sin(Math.abs(lean)) + 0.0005
   return (
     <group position={position}>
       {items.map((it, i) => (
-        <mesh key={i} position={[it.x, it.h / 2, 0]} rotation-z={it.tilt} castShadow receiveShadow material={flat(it.c)}>
-          <boxGeometry args={[0.012, it.h, 0.31]} />
-        </mesh>
+        <group key={i} position={[it.x, lift, 0]} rotation-z={-lean}>
+          <mesh position-y={it.h / 2} castShadow receiveShadow material={flat(it.c)}>
+            <boxGeometry args={[T, it.h, 0.31]} />
+          </mesh>
+        </group>
       ))}
     </group>
   )
@@ -157,10 +168,11 @@ function Cable() {
       new THREE.Vector3(0.1, TABLE_Y + 0.02, -0.34),
       new THREE.Vector3(0.18, TABLE_Y - 0.2, -0.36),
       new THREE.Vector3(0.3, 0.2, -0.4),
-      new THREE.Vector3(0.55, 0.012, -0.5),
-      new THREE.Vector3(0.95, 0.012, -0.4),
+      // lies on top of the rug (~2.7 cm thick) — not half-buried in it
+      new THREE.Vector3(0.55, RUG_TOP + 0.006, -0.5),
+      new THREE.Vector3(0.95, RUG_TOP + 0.006, -0.4),
     ])
-    return new THREE.TubeGeometry(curve, 48, 0.006, 6, false)
+    return new THREE.TubeGeometry(curve, 64, 0.006, 8, false)
   }, [])
   return <mesh geometry={geom} castShadow material={flat(P.charcoal)} />
 }
@@ -247,7 +259,8 @@ export function Diorama() {
       <Turntable kind="scratch" position={SCRATCH_POS} />
       <Mixer position={MIXER_POS} />
       <Turntable kind="beat" position={BEAT_POS} />
-      <Headphones position={[0.66, TABLE_Y, -0.2]} rotation={0.5} />
+      {/* behind the beat deck (its back edge is at z −0.16), clear of the plinth */}
+      <Headphones position={[0.52, TABLE_Y, -0.265]} rotation={0.08} />
       <Cable />
 
       <Speaker position={[-1.02, 0, -0.42]} rotation={0} />
@@ -262,7 +275,6 @@ export function Diorama() {
 
       <group position={[1.7, 0, 0.85]} rotation-y={-2.2}>
         <Prop name="loungeChair" scale={0.78} tint={{ carpet: P.teal, wood: P.woodDark }} />
-        <Prop name="bear" position={[0.02, 0.29, 0.04]} scale={0.62} tint={{ fur: P.clay, wood: P.cream, metalDark: P.charcoal }} />
       </group>
 
       <group position={[0.35, 0, -1.8]}>

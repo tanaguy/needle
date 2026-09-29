@@ -16,8 +16,6 @@ export const PROP_URLS = [
   'books',
   'radio',
   'cardboardBoxOpen',
-  'bear',
-  'pillow',
 ].map((n) => `/models/${n}.glb`)
 
 /** Kenney units are ~2 m; we build in metres. */

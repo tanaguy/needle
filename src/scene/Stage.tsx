@@ -131,6 +131,16 @@ function CameraRig() {
       }
     }
 
+    // dev-only: window.__shot = { pos: [x,y,z], look: [x,y,z] } pins the camera for close inspection
+    const dev = import.meta.env.DEV ? (window as unknown as { __shot?: { pos: number[]; look: number[] } }).__shot : undefined
+    if (dev) {
+      target.set(dev.pos[0], dev.pos[1], dev.pos[2])
+      targetLook.set(dev.look[0], dev.look[1], dev.look[2])
+      fov = 30
+      shiftPx = 0
+      shiftY = 0
+    }
+
     const lam = first.current ? 100 : s.phase === 'session' || s.phase === 'onboarding' ? 2.2 : 1.2
     first.current = false
     cam.position.x = THREE.MathUtils.damp(cam.position.x, target.x, lam, dt)
@@ -156,7 +166,7 @@ function PostFX() {
   const reduce = useStore((s) => s.settings.reduceMotion)
   const high = quality === 'high'
   return (
-    <EffectComposer multisampling={0} enableNormalPass={false}>
+    <EffectComposer multisampling={high ? 4 : 0} enableNormalPass={false}>
       <N8AO enabled={high} aoRadius={0.45} distanceFalloff={0.6} intensity={2.4} color="#3b2f25" quality="medium" halfRes />
       <TiltShift2 blur={high && !reduce ? 0.11 : 0} taper={0.6} start={[0.5, 0.0]} end={[0.5, 1.0]} samples={high ? 10 : 4} />
       <HueSaturation saturation={0.0} />

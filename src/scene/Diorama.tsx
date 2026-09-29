@@ -6,6 +6,7 @@ import { engine } from '../audio/engine'
 import { useStore } from '../store'
 import { P } from '../palette'
 import { flat } from './materials'
+import { woodMaterial } from './wood'
 import { Mixer } from './Mixer'
 import { Prop } from './Props'
 import { Turntable } from './Turntable'
@@ -34,17 +35,19 @@ function Platform() {
 }
 
 function Table() {
-  const wood = flat(P.wood)
-  const dark = flat(P.woodDark)
   const L = 1.5
   const Dp = 0.66
+  const top = woodMaterial(P.wood, L, Dp)
+  const shelf = woodMaterial(P.wood, L - 0.1, Dp - 0.12)
+  const apron = woodMaterial(P.woodDark, L - 0.1, Dp - 0.1)
+  const leg = woodMaterial(P.woodDark, TABLE_Y - 0.05, 0.055, true)
   return (
     <group>
-      <mesh position-y={TABLE_Y - 0.025} castShadow receiveShadow material={wood}>
+      <mesh position-y={TABLE_Y - 0.025} castShadow receiveShadow material={top}>
         <boxGeometry args={[L, 0.05, Dp]} />
       </mesh>
       {/* apron */}
-      <mesh position={[0, TABLE_Y - 0.08, 0]} castShadow material={dark}>
+      <mesh position={[0, TABLE_Y - 0.08, 0]} castShadow material={apron}>
         <boxGeometry args={[L - 0.1, 0.06, Dp - 0.1]} />
       </mesh>
       {[
@@ -53,12 +56,12 @@ function Table() {
         [-1, 1],
         [1, 1],
       ].map(([sx, sz], i) => (
-        <mesh key={i} position={[sx * (L / 2 - 0.07), (TABLE_Y - 0.05) / 2, sz * (Dp / 2 - 0.07)]} castShadow receiveShadow material={dark}>
+        <mesh key={i} position={[sx * (L / 2 - 0.07), (TABLE_Y - 0.05) / 2, sz * (Dp / 2 - 0.07)]} castShadow receiveShadow material={leg}>
           <boxGeometry args={[0.055, TABLE_Y - 0.05, 0.055]} />
         </mesh>
       ))}
       {/* lower shelf with records */}
-      <mesh position-y={0.22} castShadow receiveShadow material={wood}>
+      <mesh position-y={0.22} castShadow receiveShadow material={shelf}>
         <boxGeometry args={[L - 0.1, 0.03, Dp - 0.12]} />
       </mesh>
       <Sleeves count={16} position={[-0.25, 0.235, 0]} seed={3} />
